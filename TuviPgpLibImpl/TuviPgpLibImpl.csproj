@@ -24,7 +24,6 @@
     <ProjectReference Include="..\..\TuviKeyDerivationLib\KeyDerivationLib\KeyDerivationLib.csproj" />
     <ProjectReference Include="..\..\TuviMail\BackupLib\BackupLib.csproj" />
     <ProjectReference Include="..\..\TuviMail\DataStorageInterface\DataStorage.csproj" />
-    <ProjectReference Include="..\..\TuviMail\Entities\Entities.csproj" />
     <ProjectReference Include="..\TuviPgpLib\TuviPgpLib.csproj" />
   </ItemGroup>
 
