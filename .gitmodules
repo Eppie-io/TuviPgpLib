@@ -1,6 +1,3 @@
 [submodule "TuviKeyDerivationLib"]
 	path = TuviKeyDerivationLib
 	url = ../TuviKeyDerivationLib.git
-[submodule "TuviPgpLib"]
-	path = TuviPgpLib
-	url = ../TuviPgpLib.git
