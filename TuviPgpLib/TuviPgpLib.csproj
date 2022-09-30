@@ -18,7 +18,7 @@
   
   <ItemGroup>
     <ProjectReference Include="..\..\TuviKeyDerivationLib\KeyDerivationInterface\KeyDerivation.csproj" />
-    <ProjectReference Include="..\Entities\Entities.csproj" />
+    <ProjectReference Include="..\..\TuviMail\Entities\Entities.csproj" />
   </ItemGroup>
 
 </Project>

@@ -22,9 +22,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\TuviKeyDerivationLib\KeyDerivationLib\KeyDerivationLib.csproj" />
-    <ProjectReference Include="..\BackupLib\BackupLib.csproj" />
-    <ProjectReference Include="..\DataStorageInterface\DataStorage.csproj" />
-    <ProjectReference Include="..\Entities\Entities.csproj" />
+    <ProjectReference Include="..\..\TuviMail\BackupLib\BackupLib.csproj" />
+    <ProjectReference Include="..\..\TuviMail\DataStorageInterface\DataStorage.csproj" />
+    <ProjectReference Include="..\..\TuviMail\Entities\Entities.csproj" />
     <ProjectReference Include="..\TuviPgpLib\TuviPgpLib.csproj" />
   </ItemGroup>
 
