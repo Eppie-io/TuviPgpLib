@@ -14,35 +14,19 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
-using System;
+using System.Text;
 
-namespace Entities.Keys
+namespace TuviPgpLib.Entities
 {
-    public class PgpKeyInfo
+    public class UserIdentity
     {
-        public long KeyId { get; set; }
-
-        public string Algorithm { get; set; }
-
-        public int BitStrength { get; set; }
-
-        public DateTime CreationTime { get; set; }
-
-        public long ValidSeconds { get; set; }
-
-        public string UserIdentity { get; set; }
-
-        public string Fingerprint { get; set; }
-        
-        public bool IsMasterKey { get; set; }
-
-        public bool IsEncryptionKey { get; set; }
-
-        public bool IsRevoked { get; set; }
-        
-        public bool IsNeverExpires()
+        public UserIdentity(string name, string address)
         {
-            return ValidSeconds == 0;
+            Name = name;
+            Address = address;
         }
+
+        public string Name { get; }
+        public string Address { get; }
     }
 }

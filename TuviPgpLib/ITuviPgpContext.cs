@@ -14,12 +14,11 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
-using Entities;
-using Entities.Keys;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using TuviPgpLib.Entities;
 
 namespace TuviPgpLib
 {
@@ -43,7 +42,7 @@ namespace TuviPgpLib
         /// <param name="userIdentity">Identify which keys should be exported.</param>
         /// <param name="outputStream">Key export data stream.</param>
         /// <param name="isArmored">Specifies if keys should be exported armored or not.</param>
-        void ExportPublicKeys(IEnumerable<EmailAddress> userIdentity, Stream outputStream, bool isArmored = false);
+        void ExportPublicKeys(IEnumerable<UserIdentity> userIdentity, Stream outputStream, bool isArmored = false);
 
         /// <summary>
         /// Export armored public keyring containing public key with <paramref name="keyId"/> to <paramref name="stream"/>.
@@ -76,8 +75,8 @@ namespace TuviPgpLib
         void ImportPublicKeys(Stream inputStream, bool isArmored = true);
 
         /// <summary>
-        /// Checks if there are any secret key for specified <paramref name="emailAddress"/>.
+        /// Checks if there are any secret key for specified <paramref name="userIdentity"/>.
         /// </summary>
-        bool IsSecretKeyExist(EmailAddress emailAddress);
+        bool IsSecretKeyExist(UserIdentity userIdentity);
     }
 }
