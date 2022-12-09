@@ -14,7 +14,6 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
-using DataStorage;
 using Entities;
 using MimeKit.Cryptography;
 using Org.BouncyCastle.Bcpg.OpenPgp;

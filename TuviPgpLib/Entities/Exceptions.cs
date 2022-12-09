@@ -92,4 +92,19 @@ namespace TuviPgpLib.Entities
         {
         }
     }
+
+    public class IncompatibleCryptoContextException : CryptoContextException
+    {
+        public IncompatibleCryptoContextException()
+        {
+        }
+
+        public IncompatibleCryptoContextException(string message) : base(message)
+        {
+        }
+
+        public IncompatibleCryptoContextException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
 }
