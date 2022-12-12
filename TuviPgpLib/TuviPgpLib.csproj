@@ -17,7 +17,7 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\..\TuviKeyDerivationLib\KeyDerivationInterface\KeyDerivation.csproj" />
+    <ProjectReference Include="..\gitmodules\TuviKeyDerivationLib\KeyDerivationInterface\KeyDerivation.csproj" />
   </ItemGroup>
 
 </Project>

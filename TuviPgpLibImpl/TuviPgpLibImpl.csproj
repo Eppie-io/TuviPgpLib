@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\TuviKeyDerivationLib\KeyDerivationLib\KeyDerivationLib.csproj" />
+    <ProjectReference Include="..\gitmodules\TuviKeyDerivationLib\KeyDerivationLib\KeyDerivationLib.csproj" />
     <ProjectReference Include="..\TuviPgpLib\TuviPgpLib.csproj" />
   </ItemGroup>
 
