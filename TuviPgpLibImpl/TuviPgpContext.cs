@@ -14,9 +14,6 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
-using DataStorage;
-using Entities;
-using Entities.Keys;
 using MimeKit;
 using Org.BouncyCastle.Bcpg;
 using Org.BouncyCastle.Bcpg.OpenPgp;
@@ -27,6 +24,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TuviPgpLib;
+using TuviPgpLib.Entities;
 
 namespace TuviPgpLibImpl
 {
@@ -49,14 +47,14 @@ namespace TuviPgpLibImpl
             return string.Empty;
         }
 
-        public bool IsSecretKeyExist(EmailAddress emailAddress)
+        public bool IsSecretKeyExist(UserIdentity userIdentity)
         {
-            if (emailAddress == null)
+            if (userIdentity == null)
             {
-                throw new ArgumentNullException(nameof(emailAddress));
+                throw new ArgumentNullException(nameof(userIdentity));
             }
 
-            return CanSign(new MimeKit.MailboxAddress(emailAddress.Name, emailAddress.Address));
+            return CanSign(new MimeKit.MailboxAddress(userIdentity.Name, userIdentity.Address));
         }
 
         public void ExportSecretKeys(string userIdentity, Stream outputStream, bool isArmored = false)
@@ -85,7 +83,7 @@ namespace TuviPgpLibImpl
             }
         }
 
-        public void ExportPublicKeys(IEnumerable<EmailAddress> userIdentity, Stream outputStream, bool isArmored = false)
+        public void ExportPublicKeys(IEnumerable<UserIdentity> userIdentity, Stream outputStream, bool isArmored = false)
         {
             var mailboxes = userIdentity.Select(email => new MailboxAddress(email.Name, email.Address)).ToList();
             base.Export(mailboxes, outputStream, isArmored);

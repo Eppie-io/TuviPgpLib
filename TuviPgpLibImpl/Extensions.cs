@@ -14,10 +14,10 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
-using Entities.Keys;
 using Org.BouncyCastle.Bcpg.OpenPgp;
 using System;
 using System.Linq;
+using TuviPgpLib.Entities;
 
 namespace TuviPgpLibImpl
 {
