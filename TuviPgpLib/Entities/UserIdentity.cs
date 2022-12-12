@@ -14,8 +14,6 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
-using System.Text;
-
 namespace TuviPgpLib.Entities
 {
     public class UserIdentity

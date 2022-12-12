@@ -23,7 +23,7 @@ using TuviPgpLib.Entities;
 namespace TuviPgpLib
 {
     /// <summary>
-    /// <see cref="MimeKit.Cryptography.OpenPgpContext"/> extension for work with TuviMail native entities
+    /// <see cref="MimeKit.Cryptography.OpenPgpContext"/> extension for work with entities
     /// and manipulating PGP keys in a handy way.
     /// </summary>
     public interface ITuviPgpContext : IEllipticCurveCryptographyPgpContext, IExternalStorageBasedPgpContext
