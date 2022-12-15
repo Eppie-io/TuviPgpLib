@@ -14,7 +14,7 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
-using Entities;
+using KeyDerivation.Keys;
 
 namespace TuviPgpLib
 {

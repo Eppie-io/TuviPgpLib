@@ -14,7 +14,7 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
-using Entities;
+using KeyDerivation.Keys;
 using KeyDerivationLib;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X9;
