@@ -85,8 +85,8 @@ namespace TuviPgpLibImpl
 
         public void ExportPublicKeys(IEnumerable<UserIdentity> userIdentity, Stream outputStream, bool isArmored = false)
         {
-            var mailboxes = userIdentity.Select(email => new MailboxAddress(email.Name, email.Address)).ToList();
-            base.Export(mailboxes, outputStream, isArmored);
+            var identities = userIdentity.Select(identity => new MailboxAddress(identity.Name, identity.Address)).ToList();
+            base.Export(identities, outputStream, isArmored);
         }
 
         public async Task ExportPublicKeyRingAsync(long keyId, Stream stream, CancellationToken cancellationToken)
