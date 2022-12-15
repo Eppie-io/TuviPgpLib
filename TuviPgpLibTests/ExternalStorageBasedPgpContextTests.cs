@@ -14,10 +14,9 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
-
-using Org.BouncyCastle.Bcpg.OpenPgp;
-using TuviPgpLib;
-using TuviPgpLibImpl;
+//using Org.BouncyCastle.Bcpg.OpenPgp;
+//using TuviPgpLib;
+//using TuviPgpLibImpl;
 
 namespace TuviPgpLibTests
 {
@@ -159,6 +158,54 @@ namespace TuviPgpLibTests
                 ctx.Delete(ctx.EnumerateSecretKeyRings().First());
                 Assert.That(ctx.EnumerateSecretKeyRings().Count(), Is.EqualTo(0), "Key ring was not deleted");
             }
+        }
+
+        [Test]
+        public void ImportPublicKeyRingNullRingThrowArgumentNullException()
+        {
+            PgpPublicKeyRing? testKeyRing = null;
+            using var ctx = InitializeTestPgpContext();
+            Assert.Throws<ArgumentNullException>(() => ctx.Import(testKeyRing));
+        }
+
+        [Test]
+        public void ImportSecretKeyRingNullRingThrowArgumentNullException()
+        {
+            PgpSecretKeyRing? testKeyRing = null;
+            using var ctx = InitializeTestPgpContext();
+            Assert.Throws<ArgumentNullException>(() => ctx.Import(testKeyRing));
+        }
+
+        [Test]
+        public void ImportPublicKeyRingBundleNullBundleThrowArgumentNullException()
+        {
+            PgpPublicKeyRingBundle? testKeyBundle = null;
+            using var ctx = InitializeTestPgpContext();
+            Assert.Throws<ArgumentNullException>(() => ctx.Import(testKeyBundle));
+        }
+
+        [Test]
+        public void ImportSecretKeyRingBundleNullBundleThrowArgumentNullException()
+        {
+            PgpSecretKeyRingBundle? testKeyBundle = null;
+            using var ctx = InitializeTestPgpContext();
+            Assert.Throws<ArgumentNullException>(() => ctx.Import(testKeyBundle));
+        }
+
+        [Test]
+        public void DeletePublicKeyRingNullRingThrowArgumentNullException()
+        {
+            PgpPublicKeyRing? testKeyRing = null;
+            using var ctx = InitializeTestPgpContext();
+            Assert.Throws<ArgumentNullException>(() => ctx.Delete(testKeyRing));
+        }
+
+        [Test]
+        public void DeleteSecretKeyRingNullRingThrowArgumentNullException()
+        {
+            PgpSecretKeyRing? testKeyRing = null;
+            using var ctx = InitializeTestPgpContext();
+            Assert.Throws<ArgumentNullException>(() => ctx.Delete(testKeyRing));
         }
     }
 }

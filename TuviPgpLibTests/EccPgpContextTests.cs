@@ -14,17 +14,17 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
-using MimeKit;
-using NUnit.Framework;
-using NUnit.Framework.Interfaces;
-using Org.BouncyCastle.Bcpg.OpenPgp;
+//using MimeKit;
+//using NUnit.Framework;
+//using NUnit.Framework.Interfaces;
+//using Org.BouncyCastle.Bcpg.OpenPgp;
 using Org.BouncyCastle.Crypto.Parameters;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using TuviPgpLib;
-using TuviPgpLibImpl;
+//using System;
+//using System.Collections.Generic;
+//using System.IO;
+//using System.Linq;
+//using TuviPgpLib;
+//using TuviPgpLibImpl;
 
 namespace TuviPgpLibTests
 {
