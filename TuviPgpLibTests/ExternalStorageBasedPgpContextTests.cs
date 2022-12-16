@@ -14,10 +14,6 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
-//using Org.BouncyCastle.Bcpg.OpenPgp;
-//using TuviPgpLib;
-//using TuviPgpLibImpl;
-
 namespace TuviPgpLibTests
 {
     internal class TestPgpContext : ExternalStorageBasedPgpContext

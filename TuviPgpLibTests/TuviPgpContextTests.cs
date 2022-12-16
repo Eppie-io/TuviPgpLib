@@ -14,20 +14,6 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
-//using MimeKit;
-//using System;
-//using System.Collections.Generic;
-//using System.Linq;
-//using System.Net.Mail;
-//using System.Text;
-//using System.Threading.Tasks;
-//using TuviPgpLibImpl;
-//using Entities;
-//using NUnit.Framework;
-//using System;
-//using System.Collections.Generic;
-//using System.IO;
-//using System.Linq;
 using TuviPgpLib.Entities;
 
 namespace TuviPgpLibTests
