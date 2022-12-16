@@ -3,3 +3,4 @@ global using TuviPgpLib;
 global using TuviPgpLibImpl;
 global using MimeKit;
 global using Org.BouncyCastle.Bcpg.OpenPgp;
+global using KeyDerivation.Keys;
