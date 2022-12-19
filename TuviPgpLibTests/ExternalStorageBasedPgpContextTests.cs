@@ -84,6 +84,63 @@ namespace TuviPgpLibTests
         }
 
         [Test]
+        public void ImportTwoPgpPublicKeyRingBundles()
+        {
+            PgpPublicKeyRing testKeyRing1;
+            PgpPublicKeyRing testKeyRing2;
+
+            using (var ctx1 = InitializeTestPgpContext())
+            {
+                ctx1.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
+                testKeyRing1 = ctx1.EnumeratePublicKeyRings().First();
+            }
+
+            using (var ctx2 = InitializeTestPgpContext())
+            {
+                ctx2.GenerateKeyPair(TestData.GetSecondAccount().GetMailbox(), "");
+                testKeyRing2 = ctx2.EnumeratePublicKeyRings().First();
+            }
+
+            using var importingCtx = InitializeTestPgpContext();
+            Assert.That(importingCtx.EnumeratePublicKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
+
+            var keyRingBundle1 = PgpPublicKeyRingBundle.AddPublicKeyRing(new PgpPublicKeyRingBundle(Array.Empty<byte>()), testKeyRing1);
+            var keyRingBundle2 = PgpPublicKeyRingBundle.AddPublicKeyRing(new PgpPublicKeyRingBundle(Array.Empty<byte>()), testKeyRing2);
+            importingCtx.Import(keyRingBundle1);
+            importingCtx.Import(keyRingBundle2);
+
+            Assert.That(importingCtx.EnumeratePublicKeyRings().Count(), Is.EqualTo(2), "Key ring bundle was not imported");
+            Assert.That(importingCtx.EnumeratePublicKeyRings(), Does.Contain(testKeyRing1));
+            Assert.That(importingCtx.EnumeratePublicKeyRings(), Does.Contain(testKeyRing2));
+        }
+
+        [Test]
+        public void ImportDoublePgpPublicKeyRingBundle()
+        {
+            PgpPublicKeyRing testKeyRing1;
+            PgpPublicKeyRing testKeyRing2;
+
+            using (var ctx = InitializeTestPgpContext())
+            {
+                ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
+                ctx.GenerateKeyPair(TestData.GetSecondAccount().GetMailbox(), "");
+                testKeyRing1 = ctx.EnumeratePublicKeyRings().First(); 
+                testKeyRing2 = ctx.EnumeratePublicKeyRings().Last();
+            }
+
+            using var importingCtx = InitializeTestPgpContext();
+            Assert.That(importingCtx.EnumeratePublicKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
+
+            var keyRingBundle = PgpPublicKeyRingBundle.AddPublicKeyRing(new PgpPublicKeyRingBundle(Array.Empty<byte>()), testKeyRing1);
+            keyRingBundle = PgpPublicKeyRingBundle.AddPublicKeyRing(keyRingBundle, testKeyRing2);
+            importingCtx.Import(keyRingBundle);
+            
+            Assert.That(importingCtx.EnumeratePublicKeyRings().Count(), Is.EqualTo(2), "Key ring bundle was not imported");
+            Assert.That(importingCtx.EnumeratePublicKeyRings(), Does.Contain(testKeyRing1));
+            Assert.That(importingCtx.EnumeratePublicKeyRings(), Does.Contain(testKeyRing2));
+        }
+
+        [Test]
         public void ImportPgpSecretKeyRing()
         {
             PgpSecretKeyRing testKeyRing;
@@ -117,7 +174,6 @@ namespace TuviPgpLibTests
 
             using (var anotherCtx = InitializeTestPgpContext())
             {
-                var mailboxes = new List<MailboxAddress> { TestData.GetAccount().GetMailbox() };
                 Assert.That(anotherCtx.EnumerateSecretKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
 
                 var keyRingBundle = PgpSecretKeyRingBundle.AddSecretKeyRing(new PgpSecretKeyRingBundle(Array.Empty<byte>()), testKeyRing);
@@ -129,31 +185,124 @@ namespace TuviPgpLibTests
         }
 
         [Test]
+        public void ImportTwoPgpSecretKeyRingBundles()
+        {
+            PgpSecretKeyRing testKeyRing1;
+            PgpSecretKeyRing testKeyRing2;
+
+            using (var ctx1 = InitializeTestPgpContext())
+            {
+                ctx1.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
+                testKeyRing1 = ctx1.EnumerateSecretKeyRings().First();
+            }
+
+            using (var ctx2 = InitializeTestPgpContext())
+            {
+                ctx2.GenerateKeyPair(TestData.GetSecondAccount().GetMailbox(), "");
+                testKeyRing2 = ctx2.EnumerateSecretKeyRings().First();
+            }
+
+            using var importingCtx = InitializeTestPgpContext();
+            Assert.That(importingCtx.EnumerateSecretKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
+
+            var keyRingBundle1 = PgpSecretKeyRingBundle.AddSecretKeyRing(new PgpSecretKeyRingBundle(Array.Empty<byte>()), testKeyRing1);
+            var keyRingBundle2 = PgpSecretKeyRingBundle.AddSecretKeyRing(new PgpSecretKeyRingBundle(Array.Empty<byte>()), testKeyRing2);
+            importingCtx.Import(keyRingBundle1);
+            importingCtx.Import(keyRingBundle2);
+
+            Assert.That(importingCtx.EnumerateSecretKeyRings().Count(), Is.EqualTo(2), "Key ring bundle was not imported");
+            Assert.That(importingCtx.EnumerateSecretKeyRings(), Does.Contain(testKeyRing1));
+            Assert.That(importingCtx.EnumerateSecretKeyRings(), Does.Contain(testKeyRing2));
+        }
+
+        [Test]
+        public void ImportDoublePgpSecretKeyRingBundle()
+        {
+            PgpSecretKeyRing testKeyRing1;
+            PgpSecretKeyRing testKeyRing2;
+
+            using (var ctx1 = InitializeTestPgpContext())
+            {
+                ctx1.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
+                testKeyRing1 = ctx1.EnumerateSecretKeyRings().First();
+            }
+
+            using (var ctx2 = InitializeTestPgpContext())
+            {
+                ctx2.GenerateKeyPair(TestData.GetSecondAccount().GetMailbox(), "");
+                testKeyRing2 = ctx2.EnumerateSecretKeyRings().First();
+            }
+
+            using var importingCtx = InitializeTestPgpContext();
+            Assert.That(importingCtx.EnumerateSecretKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
+
+            var keyRingBundle = PgpSecretKeyRingBundle.AddSecretKeyRing(new PgpSecretKeyRingBundle(Array.Empty<byte>()), testKeyRing1);
+            keyRingBundle = PgpSecretKeyRingBundle.AddSecretKeyRing(keyRingBundle, testKeyRing2);
+            importingCtx.Import(keyRingBundle);
+
+            Assert.That(importingCtx.EnumerateSecretKeyRings().Count(), Is.EqualTo(2), "Key ring bundle was not imported");
+            Assert.That(importingCtx.EnumerateSecretKeyRings(), Does.Contain(testKeyRing1));
+            Assert.That(importingCtx.EnumerateSecretKeyRings(), Does.Contain(testKeyRing2));
+        }
+
+        [Test]
         public void DeletePgpPublicKeyRing()
         {
-            using (var ctx = InitializeTestPgpContext())
-            {
-                ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
+            using var ctx = InitializeTestPgpContext();
+            ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
+            
+            Assert.That(ctx.EnumeratePublicKeyRings().Count(), Is.EqualTo(1), "Initialized context is empty");
+            
+            ctx.Delete(ctx.EnumeratePublicKeyRings().First());
+            Assert.That(ctx.EnumeratePublicKeyRings().Count(), Is.EqualTo(0), "Key ring was not deleted");
+        }
 
-                Assert.That(ctx.EnumeratePublicKeyRings().Count(), Is.EqualTo(1), "Initialized context is empty");
+        [Test]
+        public void DeletePgpPublicKeyRing2()
+        {
+            using var ctx = InitializeTestPgpContext();
+            ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
+            Assert.That(ctx.EnumeratePublicKeyRings().Count(), Is.EqualTo(1), "Initialized context is empty");
+            PgpPublicKeyRing keyRing = ctx.EnumeratePublicKeyRings().First();
 
-                ctx.Delete(ctx.EnumeratePublicKeyRings().First());
-                Assert.That(ctx.EnumeratePublicKeyRings().Count(), Is.EqualTo(0), "Key ring was not deleted");
-            }
+            ctx.GenerateKeyPair(TestData.GetSecondAccount().GetMailbox(), "");
+            Assert.That(ctx.EnumeratePublicKeyRings().Count(), Is.EqualTo(2), "New key ring wasn't added");
+            ctx.GenerateKeyPair(TestData.GetThirdAccount().GetMailbox(), "");
+            Assert.That(ctx.EnumeratePublicKeyRings().Count(), Is.EqualTo(3), "New key ring wasn't added");
+
+            Assert.That(ctx.EnumeratePublicKeyRings(), Does.Contain(keyRing), "Needed key ring does not exist");
+            ctx.Delete(keyRing);
+            Assert.That(ctx.EnumeratePublicKeyRings().Contains(keyRing), Is.False);
         }
 
         [Test]
         public void DeletePgpSecretKeyRing()
         {
-            using (var ctx = InitializeTestPgpContext())
-            {
-                ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
+            using var ctx = InitializeTestPgpContext();
+            ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
 
-                Assert.That(ctx.EnumerateSecretKeyRings().Count(), Is.EqualTo(1), "Initialized context is empty");
+            Assert.That(ctx.EnumerateSecretKeyRings().Count(), Is.EqualTo(1), "Initialized context is empty");
 
-                ctx.Delete(ctx.EnumerateSecretKeyRings().First());
-                Assert.That(ctx.EnumerateSecretKeyRings().Count(), Is.EqualTo(0), "Key ring was not deleted");
-            }
+            ctx.Delete(ctx.EnumerateSecretKeyRings().First());
+            Assert.That(ctx.EnumerateSecretKeyRings().Count(), Is.EqualTo(0), "Key ring was not deleted");
+        }
+
+        [Test]
+        public void DeletePgpSecretKeyRing2()
+        {
+            using var ctx = InitializeTestPgpContext();
+            ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
+            Assert.That(ctx.EnumerateSecretKeyRings().Count(), Is.EqualTo(1), "Initialized context is empty");
+            PgpSecretKeyRing keyRing = ctx.EnumerateSecretKeyRings().First();
+
+            ctx.GenerateKeyPair(TestData.GetSecondAccount().GetMailbox(), "");
+            Assert.That(ctx.EnumerateSecretKeyRings().Count(), Is.EqualTo(2), "New key ring wasn't added");
+            ctx.GenerateKeyPair(TestData.GetThirdAccount().GetMailbox(), "");
+            Assert.That(ctx.EnumerateSecretKeyRings().Count(), Is.EqualTo(3), "New key ring wasn't added");
+
+            Assert.That(ctx.EnumerateSecretKeyRings(), Does.Contain(keyRing), "Needed key ring does not exist");
+            ctx.Delete(keyRing);
+            Assert.That(ctx.EnumerateSecretKeyRings().Contains(keyRing), Is.False);
         }
 
         [Test]

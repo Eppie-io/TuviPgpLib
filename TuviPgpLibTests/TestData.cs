@@ -111,6 +111,16 @@ namespace TuviPgpLibTests
             return new TestAccount { Address = "test@user.net", Name = "Test User" };
         }
 
+        public static TestAccount GetSecondAccount()
+        {
+            return new TestAccount { Address = "test2@user.net", Name = "Test2 User" };
+        }
+
+        public static TestAccount GetThirdAccount()
+        {
+            return new TestAccount { Address = "test3@user.net", Name = "Test3 User" };
+        }
+
         public static readonly string WrongPgpIdentity = "abra-cadabra...";
 
         public static string TextContent = new string("Hello elliptic curve cryptography!");

@@ -27,7 +27,7 @@ namespace TuviPgpLibTests
 
         protected override string GetPasswordForKey(PgpSecretKey key)
         {
-            return String.Empty;
+            return string.Empty;
         }
     }
 
@@ -109,12 +109,12 @@ namespace TuviPgpLibTests
                 encryptedMime.WriteTo(encryptedData);
             }
 
-            using (EccPgpContext ctx = InitializeEccPgpContext())
+            using (EccPgpContext anotherCtx = InitializeEccPgpContext())
             {
-                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
+                anotherCtx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
 
                 encryptedData.Position = 0;
-                var mime = ctx.Decrypt(encryptedData);
+                var mime = anotherCtx.Decrypt(encryptedData);
                 var decryptedBody = mime as TextPart;
                 Assert.IsTrue(
                     TestData.TextContent.SequenceEqual(decryptedBody?.Text ?? string.Empty),
