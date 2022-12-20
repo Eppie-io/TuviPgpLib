@@ -33,11 +33,11 @@ namespace TuviPgpLibTests
 
     internal class EccPgpContextTests
     {
-        private EccPgpContext InitializeEccPgpContext()
+        private async Task<EccPgpContext> InitializeEccPgpContextAsync()
         {
             var keyStorage = new MockPgpKeyStorage().Get();
             var context = new TestEccPgpContext(keyStorage);
-            context.LoadContextAsync().Wait();
+            await context.LoadContextAsync();
             return context;
         }
 
@@ -49,19 +49,11 @@ namespace TuviPgpLibTests
             for (int i = 0; i < TestData.EccKeyPairs.Length; i++)
             {
                 var keyPair = EccPgpContext.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), i);
-
-                var privateKey = keyPair.Private as ECPrivateKeyParameters;
-                var publicKey = keyPair.Public as ECPublicKeyParameters;
-                if (privateKey == null)
-                {
+                ECPrivateKeyParameters? privateKey = (keyPair.Private as ECPrivateKeyParameters) ?? 
                     throw new Exception("privateKey can not be a null");
-                }
-
-                if(publicKey == null)
-                {
+                ECPublicKeyParameters? publicKey = (keyPair.Public as ECPublicKeyParameters) ?? 
                     throw new Exception("publicKey can not be a null");
-                }
-
+                
                 Assert.That(ToHex(privateKey.D.ToByteArrayUnsigned()), Is.EqualTo(TestData.EccKeyPairs[i].Key),
                                 "Private key is not equal to determined");
                 Assert.That(ToHex(publicKey.Q.GetEncoded()), Is.EqualTo(TestData.EccKeyPairs[i].Value),
@@ -70,9 +62,9 @@ namespace TuviPgpLibTests
         }
 
         [Test]
-        public void EссEncryptAndDecrypt()
+        public async Task EссEncryptAndDecryptAsync()
         {
-            using EccPgpContext ctx = InitializeEccPgpContext();
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync();
             ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
 
             using Stream inputData = new MemoryStream();
@@ -88,16 +80,16 @@ namespace TuviPgpLibTests
 
             var mime = ctx.Decrypt(encryptedData);
             var decryptedBody = mime as TextPart;
-            Assert.IsTrue(
-                TestData.TextContent.SequenceEqual(decryptedBody?.Text ?? string.Empty),
+            Assert.That(
+                TestData.TextContent.SequenceEqual(decryptedBody?.Text ?? string.Empty), Is.True,
                 "Decrypted content is corrupted");
         }
 
         [Test]
-        public void EccDeterministicKeyPairRestore()
+        public async Task EccDeterministicKeyPairRestoreAsync()
         {
             using Stream encryptedData = new MemoryStream();
-            using (EccPgpContext ctx = InitializeEccPgpContext())
+            using (EccPgpContext ctx = await InitializeEccPgpContextAsync())
             {
                 ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
 
@@ -109,15 +101,15 @@ namespace TuviPgpLibTests
                 encryptedMime.WriteTo(encryptedData);
             }
 
-            using (EccPgpContext anotherCtx = InitializeEccPgpContext())
+            using (EccPgpContext anotherCtx = await InitializeEccPgpContextAsync())
             {
                 anotherCtx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
 
                 encryptedData.Position = 0;
                 var mime = anotherCtx.Decrypt(encryptedData);
                 var decryptedBody = mime as TextPart;
-                Assert.IsTrue(
-                    TestData.TextContent.SequenceEqual(decryptedBody?.Text ?? string.Empty),
+                Assert.That(
+                    TestData.TextContent.SequenceEqual(decryptedBody?.Text ?? string.Empty), Is.True,
                     "Data decrypted with restored key is corrupted");
             }
         }

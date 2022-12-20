@@ -31,77 +31,73 @@ namespace TuviPgpLibTests
 
     internal class ExternalStorageBasedPgpContextTests
     {
-        private ExternalStorageBasedPgpContext InitializeTestPgpContext()
+        private async Task<ExternalStorageBasedPgpContext> InitializeTestPgpContextAsync()
         {
             var keyStorage = new MockPgpKeyStorage().Get();
             var context = new TestPgpContext(keyStorage);
-            context.LoadContextAsync().Wait();
+            await context.LoadContextAsync();
             return context;
         }
 
         [Test]
-        public void ImportPgpPublicKeyRing()
+        public async Task ImportPgpPublicKeyRingAsync()
         {
             PgpPublicKeyRing testKeyRing;
 
-            using (var ctx = InitializeTestPgpContext())
+            using (var ctx = await InitializeTestPgpContextAsync())
             {
                 ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
                 testKeyRing = ctx.EnumeratePublicKeyRings().First();
             }
 
-            using (var anotherCtx = InitializeTestPgpContext())
-            {
-                Assert.That(anotherCtx.EnumeratePublicKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
+            using var anotherCtx = await InitializeTestPgpContextAsync();
+            Assert.That(anotherCtx.EnumeratePublicKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
 
-                anotherCtx.Import(testKeyRing);
-                Assert.That(anotherCtx.EnumeratePublicKeyRings().Count(), Is.EqualTo(1), "Key ring was not imported");
-                Assert.That(anotherCtx.EnumeratePublicKeyRings().First(), Is.EqualTo(testKeyRing), "Imported keyring is corrupted");
-            }
+            anotherCtx.Import(testKeyRing);
+            Assert.That(anotherCtx.EnumeratePublicKeyRings().Count(), Is.EqualTo(1), "Key ring was not imported");
+            Assert.That(anotherCtx.EnumeratePublicKeyRings().First(), Is.EqualTo(testKeyRing), "Imported keyring is corrupted");
         }
 
         [Test]
-        public void ImportPgpPublicKeyRingBundle()
+        public async Task ImportPgpPublicKeyRingBundleAsync()
         {
             PgpPublicKeyRing testKeyRing;
 
-            using (var ctx = InitializeTestPgpContext())
+            using (var ctx = await InitializeTestPgpContextAsync())
             {
                 ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
                 testKeyRing = ctx.EnumeratePublicKeyRings().First();
             }
 
-            using (var anotherCtx = InitializeTestPgpContext())
-            {
-                Assert.That(anotherCtx.EnumeratePublicKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
+            using var anotherCtx = await InitializeTestPgpContextAsync();
+            Assert.That(anotherCtx.EnumeratePublicKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
 
-                var keyRingBundle = PgpPublicKeyRingBundle.AddPublicKeyRing(new PgpPublicKeyRingBundle(Array.Empty<byte>()), testKeyRing);
+            var keyRingBundle = PgpPublicKeyRingBundle.AddPublicKeyRing(new PgpPublicKeyRingBundle(Array.Empty<byte>()), testKeyRing);
 
-                anotherCtx.Import(keyRingBundle);
-                Assert.That(anotherCtx.EnumeratePublicKeyRings().Count(), Is.EqualTo(1), "Key ring bundle was not imported");
-                Assert.That(anotherCtx.EnumeratePublicKeyRings().First(), Is.EqualTo(testKeyRing), "Imported keyring is corrupted");
-            }
+            anotherCtx.Import(keyRingBundle);
+            Assert.That(anotherCtx.EnumeratePublicKeyRings().Count(), Is.EqualTo(1), "Key ring bundle was not imported");
+            Assert.That(anotherCtx.EnumeratePublicKeyRings().First(), Is.EqualTo(testKeyRing), "Imported keyring is corrupted");
         }
 
         [Test]
-        public void ImportTwoPgpPublicKeyRingBundles()
+        public async Task ImportTwoPgpPublicKeyRingBundles()
         {
             PgpPublicKeyRing testKeyRing1;
             PgpPublicKeyRing testKeyRing2;
 
-            using (var ctx1 = InitializeTestPgpContext())
+            using (var ctx1 = await InitializeTestPgpContextAsync())
             {
                 ctx1.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
                 testKeyRing1 = ctx1.EnumeratePublicKeyRings().First();
             }
 
-            using (var ctx2 = InitializeTestPgpContext())
+            using (var ctx2 = await InitializeTestPgpContextAsync())
             {
                 ctx2.GenerateKeyPair(TestData.GetSecondAccount().GetMailbox(), "");
                 testKeyRing2 = ctx2.EnumeratePublicKeyRings().First();
             }
 
-            using var importingCtx = InitializeTestPgpContext();
+            using var importingCtx = await InitializeTestPgpContextAsync();
             Assert.That(importingCtx.EnumeratePublicKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
 
             var keyRingBundle1 = PgpPublicKeyRingBundle.AddPublicKeyRing(new PgpPublicKeyRingBundle(Array.Empty<byte>()), testKeyRing1);
@@ -115,12 +111,12 @@ namespace TuviPgpLibTests
         }
 
         [Test]
-        public void ImportDoublePgpPublicKeyRingBundle()
+        public async Task ImportDoublePgpPublicKeyRingBundleAsync()
         {
             PgpPublicKeyRing testKeyRing1;
             PgpPublicKeyRing testKeyRing2;
 
-            using (var ctx = InitializeTestPgpContext())
+            using (var ctx = await InitializeTestPgpContextAsync())
             {
                 ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
                 ctx.GenerateKeyPair(TestData.GetSecondAccount().GetMailbox(), "");
@@ -128,7 +124,7 @@ namespace TuviPgpLibTests
                 testKeyRing2 = ctx.EnumeratePublicKeyRings().Last();
             }
 
-            using var importingCtx = InitializeTestPgpContext();
+            using var importingCtx = await InitializeTestPgpContextAsync();
             Assert.That(importingCtx.EnumeratePublicKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
 
             var keyRingBundle = PgpPublicKeyRingBundle.AddPublicKeyRing(new PgpPublicKeyRingBundle(Array.Empty<byte>()), testKeyRing1);
@@ -141,68 +137,64 @@ namespace TuviPgpLibTests
         }
 
         [Test]
-        public void ImportPgpSecretKeyRing()
+        public async Task ImportPgpSecretKeyRingAsync()
         {
             PgpSecretKeyRing testKeyRing;
 
-            using (var ctx = InitializeTestPgpContext())
+            using (var ctx = await InitializeTestPgpContextAsync())
             {
                 ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
                 testKeyRing = ctx.EnumerateSecretKeyRings().First();
             }
 
-            using (var anotherCtx = InitializeTestPgpContext())
-            {
-                Assert.That(anotherCtx.EnumerateSecretKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
+            using var anotherCtx = await InitializeTestPgpContextAsync();
+            Assert.That(anotherCtx.EnumerateSecretKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
 
-                anotherCtx.Import(testKeyRing);
-                Assert.That(anotherCtx.EnumerateSecretKeyRings().Count(), Is.EqualTo(1), "Key ring was not imported");
-                Assert.That(anotherCtx.EnumerateSecretKeyRings().First(), Is.EqualTo(testKeyRing), "Imported keyring is corrupted");
-            }
+            anotherCtx.Import(testKeyRing);
+            Assert.That(anotherCtx.EnumerateSecretKeyRings().Count(), Is.EqualTo(1), "Key ring was not imported");
+            Assert.That(anotherCtx.EnumerateSecretKeyRings().First(), Is.EqualTo(testKeyRing), "Imported keyring is corrupted");
         }
 
         [Test]
-        public void ImportPgpSecretKeyRingBundle()
+        public async Task ImportPgpSecretKeyRingBundleAsync()
         {
             PgpSecretKeyRing testKeyRing;
 
-            using (var ctx = InitializeTestPgpContext())
+            using (var ctx = await InitializeTestPgpContextAsync())
             {
                 ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
                 testKeyRing = ctx.EnumerateSecretKeyRings().First();
             }
 
-            using (var anotherCtx = InitializeTestPgpContext())
-            {
-                Assert.That(anotherCtx.EnumerateSecretKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
+            using var anotherCtx = await InitializeTestPgpContextAsync();
+            Assert.That(anotherCtx.EnumerateSecretKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
 
-                var keyRingBundle = PgpSecretKeyRingBundle.AddSecretKeyRing(new PgpSecretKeyRingBundle(Array.Empty<byte>()), testKeyRing);
+            var keyRingBundle = PgpSecretKeyRingBundle.AddSecretKeyRing(new PgpSecretKeyRingBundle(Array.Empty<byte>()), testKeyRing);
 
-                anotherCtx.Import(keyRingBundle);
-                Assert.That(anotherCtx.EnumerateSecretKeyRings().Count(), Is.EqualTo(1), "Key ring bundle was not imported");
-                Assert.That(anotherCtx.EnumerateSecretKeyRings().First(), Is.EqualTo(testKeyRing), "Imported keyring is corrupted");
-            }
+            anotherCtx.Import(keyRingBundle);
+            Assert.That(anotherCtx.EnumerateSecretKeyRings().Count(), Is.EqualTo(1), "Key ring bundle was not imported");
+            Assert.That(anotherCtx.EnumerateSecretKeyRings().First(), Is.EqualTo(testKeyRing), "Imported keyring is corrupted");
         }
 
         [Test]
-        public void ImportTwoPgpSecretKeyRingBundles()
+        public async Task ImportTwoPgpSecretKeyRingBundlesAsync()
         {
             PgpSecretKeyRing testKeyRing1;
             PgpSecretKeyRing testKeyRing2;
 
-            using (var ctx1 = InitializeTestPgpContext())
+            using (var ctx1 = await InitializeTestPgpContextAsync())
             {
                 ctx1.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
                 testKeyRing1 = ctx1.EnumerateSecretKeyRings().First();
             }
 
-            using (var ctx2 = InitializeTestPgpContext())
+            using (var ctx2 = await InitializeTestPgpContextAsync())
             {
                 ctx2.GenerateKeyPair(TestData.GetSecondAccount().GetMailbox(), "");
                 testKeyRing2 = ctx2.EnumerateSecretKeyRings().First();
             }
 
-            using var importingCtx = InitializeTestPgpContext();
+            using var importingCtx = await InitializeTestPgpContextAsync();
             Assert.That(importingCtx.EnumerateSecretKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
 
             var keyRingBundle1 = PgpSecretKeyRingBundle.AddSecretKeyRing(new PgpSecretKeyRingBundle(Array.Empty<byte>()), testKeyRing1);
@@ -216,24 +208,20 @@ namespace TuviPgpLibTests
         }
 
         [Test]
-        public void ImportDoublePgpSecretKeyRingBundle()
+        public async Task ImportDoublePgpSecretKeyRingBundleAsync()
         {
             PgpSecretKeyRing testKeyRing1;
             PgpSecretKeyRing testKeyRing2;
 
-            using (var ctx1 = InitializeTestPgpContext())
+            using (var ctx = await InitializeTestPgpContextAsync())
             {
-                ctx1.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
-                testKeyRing1 = ctx1.EnumerateSecretKeyRings().First();
+                ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");                
+                ctx.GenerateKeyPair(TestData.GetSecondAccount().GetMailbox(), "");
+                testKeyRing1 = ctx.EnumerateSecretKeyRings().First();
+                testKeyRing2 = ctx.EnumerateSecretKeyRings().Last();
             }
 
-            using (var ctx2 = InitializeTestPgpContext())
-            {
-                ctx2.GenerateKeyPair(TestData.GetSecondAccount().GetMailbox(), "");
-                testKeyRing2 = ctx2.EnumerateSecretKeyRings().First();
-            }
-
-            using var importingCtx = InitializeTestPgpContext();
+            using var importingCtx = await InitializeTestPgpContextAsync();
             Assert.That(importingCtx.EnumerateSecretKeyRings().Count(), Is.EqualTo(0), "Initialized context is not empty");
 
             var keyRingBundle = PgpSecretKeyRingBundle.AddSecretKeyRing(new PgpSecretKeyRingBundle(Array.Empty<byte>()), testKeyRing1);
@@ -246,9 +234,9 @@ namespace TuviPgpLibTests
         }
 
         [Test]
-        public void DeletePgpPublicKeyRing()
+        public async Task DeletePgpPublicKeyRingAsync()
         {
-            using var ctx = InitializeTestPgpContext();
+            using var ctx = await InitializeTestPgpContextAsync();
             ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
             
             Assert.That(ctx.EnumeratePublicKeyRings().Count(), Is.EqualTo(1), "Initialized context is empty");
@@ -258,9 +246,9 @@ namespace TuviPgpLibTests
         }
 
         [Test]
-        public void DeletePgpPublicKeyRing2()
+        public async Task DeletePgpPublicKeyRing2Async()
         {
-            using var ctx = InitializeTestPgpContext();
+            using var ctx = await InitializeTestPgpContextAsync();
             ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
             Assert.That(ctx.EnumeratePublicKeyRings().Count(), Is.EqualTo(1), "Initialized context is empty");
             PgpPublicKeyRing keyRing = ctx.EnumeratePublicKeyRings().First();
@@ -276,9 +264,9 @@ namespace TuviPgpLibTests
         }
 
         [Test]
-        public void DeletePgpSecretKeyRing()
+        public async Task DeletePgpSecretKeyRingAsync()
         {
-            using var ctx = InitializeTestPgpContext();
+            using var ctx = await InitializeTestPgpContextAsync();
             ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
 
             Assert.That(ctx.EnumerateSecretKeyRings().Count(), Is.EqualTo(1), "Initialized context is empty");
@@ -288,9 +276,9 @@ namespace TuviPgpLibTests
         }
 
         [Test]
-        public void DeletePgpSecretKeyRing2()
+        public async Task DeletePgpSecretKeyRing2Async()
         {
-            using var ctx = InitializeTestPgpContext();
+            using var ctx = await InitializeTestPgpContextAsync();
             ctx.GenerateKeyPair(TestData.GetAccount().GetMailbox(), "");
             Assert.That(ctx.EnumerateSecretKeyRings().Count(), Is.EqualTo(1), "Initialized context is empty");
             PgpSecretKeyRing keyRing = ctx.EnumerateSecretKeyRings().First();
@@ -306,50 +294,50 @@ namespace TuviPgpLibTests
         }
 
         [Test]
-        public void ImportPublicKeyRingNullRingThrowArgumentNullException()
+        public async Task ImportPublicKeyRingNullRingThrowArgumentNullExceptionAsync()
         {
             PgpPublicKeyRing? testKeyRing = null;
-            using var ctx = InitializeTestPgpContext();
+            using var ctx = await InitializeTestPgpContextAsync();
             Assert.Throws<ArgumentNullException>(() => ctx.Import(testKeyRing));
         }
 
         [Test]
-        public void ImportSecretKeyRingNullRingThrowArgumentNullException()
+        public async Task ImportSecretKeyRingNullRingThrowArgumentNullExceptionAsync()
         {
             PgpSecretKeyRing? testKeyRing = null;
-            using var ctx = InitializeTestPgpContext();
+            using var ctx = await InitializeTestPgpContextAsync();
             Assert.Throws<ArgumentNullException>(() => ctx.Import(testKeyRing));
         }
 
         [Test]
-        public void ImportPublicKeyRingBundleNullBundleThrowArgumentNullException()
+        public async Task ImportPublicKeyRingBundleNullBundleThrowArgumentNullExceptionAsync()
         {
             PgpPublicKeyRingBundle? testKeyBundle = null;
-            using var ctx = InitializeTestPgpContext();
+            using var ctx = await InitializeTestPgpContextAsync();
             Assert.Throws<ArgumentNullException>(() => ctx.Import(testKeyBundle));
         }
 
         [Test]
-        public void ImportSecretKeyRingBundleNullBundleThrowArgumentNullException()
+        public async Task ImportSecretKeyRingBundleNullBundleThrowArgumentNullExceptionAsync()
         {
             PgpSecretKeyRingBundle? testKeyBundle = null;
-            using var ctx = InitializeTestPgpContext();
+            using var ctx = await InitializeTestPgpContextAsync();
             Assert.Throws<ArgumentNullException>(() => ctx.Import(testKeyBundle));
         }
 
         [Test]
-        public void DeletePublicKeyRingNullRingThrowArgumentNullException()
+        public async Task DeletePublicKeyRingNullRingThrowArgumentNullExceptionAsync()
         {
             PgpPublicKeyRing? testKeyRing = null;
-            using var ctx = InitializeTestPgpContext();
+            using var ctx = await InitializeTestPgpContextAsync();
             Assert.Throws<ArgumentNullException>(() => ctx.Delete(testKeyRing));
         }
 
         [Test]
-        public void DeleteSecretKeyRingNullRingThrowArgumentNullException()
+        public async Task DeleteSecretKeyRingNullRingThrowArgumentNullExceptionAsync()
         {
             PgpSecretKeyRing? testKeyRing = null;
-            using var ctx = InitializeTestPgpContext();
+            using var ctx = await InitializeTestPgpContextAsync();
             Assert.Throws<ArgumentNullException>(() => ctx.Delete(testKeyRing));
         }
     }
