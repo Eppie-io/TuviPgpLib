@@ -7,7 +7,7 @@
 
     <IsPackable>false</IsPackable>
 
-    <AnalysisLevel>latest-all</AnalysisLevel>
+    <AnalysisLevel>none</AnalysisLevel>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
