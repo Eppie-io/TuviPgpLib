@@ -18,35 +18,35 @@ using TuviPgpLib.Entities;
 
 namespace TuviPgpLibTests
 {
-    internal class TuviPgpContextTests
+    public class TuviPgpContextTests
     {
-        private async Task<TuviPgpContext> InitializeTuviPgpContextAsync()
+        private static async Task<TuviPgpContext> InitializeTuviPgpContextAsync()
         {
             var keyStorage = new MockPgpKeyStorage().Get();
             var context = new TuviPgpContext(keyStorage);
-            await context.LoadContextAsync();
+            await context.LoadContextAsync().ConfigureAwait(false);
             return context;
         }
 
         [Test]
         public async Task TuviPgpKeysRawImportExportAsync()
         {
-            await TuviPgpKeysImportExport(false);
+            await TuviPgpKeysImportExport(false).ConfigureAwait(false);
         }
 
         [Test]
         public async Task TuviPgpKeysArmoredImportExportAsync()
         {
-            await TuviPgpKeysImportExport(true);
+            await TuviPgpKeysImportExport(true).ConfigureAwait(false);
         }
 
-        private async Task TuviPgpKeysImportExport(bool isArmored)
+        private static async Task TuviPgpKeysImportExport(bool isArmored)
         {
             using Stream encryptedMimeData = new MemoryStream();
             using Stream publicKeyData = new MemoryStream();
             using Stream secretKeyData = new MemoryStream();
 
-            using (TuviPgpContext ctx = await InitializeTuviPgpContextAsync())
+            using (TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false))
             {
                 var identities = new List<UserIdentity> { TestData.GetAccount().GetUserIdentity() };
 
@@ -61,11 +61,11 @@ namespace TuviPgpLibTests
             publicKeyData.Position = 0;
             secretKeyData.Position = 0;
 
-            await EncryptMimeWithImportedPubKeyAsync(publicKeyData, encryptedMimeData, isArmored);
+            await EncryptMimeWithImportedPubKeyAsync(publicKeyData, encryptedMimeData, isArmored).ConfigureAwait(false);
 
             encryptedMimeData.Position = 0;
 
-            await DecryptMimeWithImportedSecretKeyAsync(secretKeyData, encryptedMimeData, isArmored);
+            await DecryptMimeWithImportedSecretKeyAsync(secretKeyData, encryptedMimeData, isArmored).ConfigureAwait(false);
         }
 
         [Test]
@@ -74,7 +74,7 @@ namespace TuviPgpLibTests
             using Stream encryptedMimeData = new MemoryStream();
             using Stream publicKeyArmored = new MemoryStream();
             using Stream secretKeyData = new MemoryStream();
-            using (TuviPgpContext ctx = await InitializeTuviPgpContextAsync())
+            using (TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false))
             {
                 ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
                 var publicKeyId = ctx.GetPublicKeysInfo().First().KeyId;
@@ -93,22 +93,22 @@ namespace TuviPgpLibTests
             publicKeyArmored.Position = 0;
             secretKeyData.Position = 0;
 
-            await EncryptMimeWithImportedPubKeyAsync(publicKeyArmored, encryptedMimeData, true);
+            await EncryptMimeWithImportedPubKeyAsync(publicKeyArmored, encryptedMimeData, true).ConfigureAwait(false);
 
             encryptedMimeData.Position = 0;
 
-            await DecryptMimeWithImportedSecretKeyAsync(secretKeyData, encryptedMimeData, true);
+            await DecryptMimeWithImportedSecretKeyAsync(secretKeyData, encryptedMimeData, true).ConfigureAwait(false);
         }
 
-        private async Task EncryptMimeWithImportedPubKeyAsync(Stream pubKeyToImport, Stream encryptedMimeData, bool isKeyArmored)
+        private static async Task EncryptMimeWithImportedPubKeyAsync(Stream pubKeyToImport, Stream encryptedMimeData, bool isKeyArmored)
         {
-            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync();
+            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
             ctx.ImportPublicKeys(pubKeyToImport, isKeyArmored);
 
             Assert.That(ctx.PublicKeyRingBundle.Count, Is.EqualTo(1), "Public key was not imported");
 
             using Stream inputData = new MemoryStream();
-            var messageBody = new TextPart() { Text = TestData.TextContent };
+            using TextPart messageBody = new() { Text = TestData.TextContent };
             messageBody.WriteTo(inputData);
             inputData.Position = 0;
             var mailboxes = new List<MailboxAddress> { TestData.GetAccount().GetMailbox() };
@@ -116,9 +116,9 @@ namespace TuviPgpLibTests
             encryptedMime.WriteTo(encryptedMimeData);
         }
 
-        private async Task DecryptMimeWithImportedSecretKeyAsync(Stream secretKeyToImport, Stream encryptedMimeData, bool isKeyArmored)
+        private static async Task DecryptMimeWithImportedSecretKeyAsync(Stream secretKeyToImport, Stream encryptedMimeData, bool isKeyArmored)
         {
-            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync();
+            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
             ctx.ImportSecretKeys(secretKeyToImport, isKeyArmored);
 
             Assert.That(ctx.SecretKeyRingBundle.Count, Is.EqualTo(1), "Secret key was not imported");
@@ -134,7 +134,7 @@ namespace TuviPgpLibTests
         [Test]
         public async Task SecretKeyExistAsync()
         {
-            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync();
+            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
             ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
             bool isKeyExist = ctx.IsSecretKeyExist(TestData.GetAccount().GetUserIdentity());
 
@@ -144,7 +144,7 @@ namespace TuviPgpLibTests
         [Test]
         public async Task SecretKeyNotExistAsync()
         {
-            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync();
+            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
             ctx.DeriveKeyPair(TestData.MasterKey, TestData.WrongPgpIdentity, "");
             bool isKeyExist = ctx.IsSecretKeyExist(TestData.GetAccount().GetUserIdentity());
 
@@ -154,7 +154,7 @@ namespace TuviPgpLibTests
         [Test]
         public async Task GetPublicKeysInformationAsync()
         {
-            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync();
+            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
 
             ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
             var keysInfo = ctx.GetPublicKeysInfo();
@@ -170,7 +170,7 @@ namespace TuviPgpLibTests
         [Test]
         public async Task IsSecretKeyExistNullIdentityThrowArgumentNullExceptionAsync()
         {
-            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync();
+            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
             UserIdentity? nullIdentity = null;
             ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
             Assert.Throws<ArgumentNullException>(() => ctx.IsSecretKeyExist(nullIdentity));
@@ -180,7 +180,7 @@ namespace TuviPgpLibTests
         public async Task ExportSecretKeysNullStreamThrowArgumentNullExceptionAsync()
         {
             using Stream? nullStream = null;
-            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync();
+            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
             Assert.Throws<ArgumentNullException>(() =>
             ctx.ExportSecretKeys(TestData.GetAccount().GetPgpIdentity(), nullStream, true));
         }
@@ -189,7 +189,7 @@ namespace TuviPgpLibTests
         public async Task ExportPublicKeysNullStreamThrowArgumentNullExceptionAsync()
         {
             using Stream? nullStream = null;
-            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync();
+            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
             var identities = new List<UserIdentity> { TestData.GetAccount().GetUserIdentity() };
             Assert.Throws<ArgumentNullException>(() =>
             ctx.ExportPublicKeys(identities, nullStream, true));
@@ -199,7 +199,7 @@ namespace TuviPgpLibTests
         public async Task ExportPublicKeysNullIdentitiesThrowArgumentNullExceptionAsync()
         {
             using Stream publicKeyArmored = new MemoryStream();
-            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync();
+            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
             List<UserIdentity>? identities = null;
             Assert.Throws<ArgumentNullException>(() =>
             ctx.ExportPublicKeys(identities, publicKeyArmored, true));
@@ -209,7 +209,7 @@ namespace TuviPgpLibTests
         public async Task ImportSecretKeysNullStreamThrowArgumentNullExceptionAsync()
         {
             using Stream? nullStream = null;
-            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync();
+            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
             Assert.Throws<ArgumentNullException>(() => ctx.ImportSecretKeys(nullStream, true));
             Assert.Throws<ArgumentNullException>(() => ctx.ImportSecretKeys(nullStream, false));
         }
@@ -218,7 +218,7 @@ namespace TuviPgpLibTests
         public async Task ImportPublicKeysNullStreamThrowArgumentNullExceptionAsync()
         {
             using Stream? nullStream = null;
-            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync();
+            using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
             Assert.Throws<ImportPublicKeyException>(() => ctx.ImportPublicKeys(nullStream, true));
             Assert.Throws<ImportPublicKeyException>(() => ctx.ImportPublicKeys(nullStream, false));
         }

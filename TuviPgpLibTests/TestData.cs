@@ -121,7 +121,7 @@ namespace TuviPgpLibTests
             return new TestAccount { Address = "test3@user.net", Name = "Test3 User" };
         }
 
-        public static readonly string WrongPgpIdentity = "abra-cadabra...";
+        public const string WrongPgpIdentity = "abra-cadabra...";
 
         public static string TextContent = new string("Hello elliptic curve cryptography!");
     }
