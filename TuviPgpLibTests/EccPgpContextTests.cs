@@ -15,6 +15,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 using Org.BouncyCastle.Crypto.Parameters;
+using System.Globalization;
 
 namespace TuviPgpLibTests
 {
@@ -31,29 +32,31 @@ namespace TuviPgpLibTests
         }
     }
 
-    internal class EccPgpContextTests
+    public class EccPgpContextTests
     {
-        private async Task<EccPgpContext> InitializeEccPgpContextAsync()
+        private static async Task<EccPgpContext> InitializeEccPgpContextAsync()
         {
             var keyStorage = new MockPgpKeyStorage().Get();
             var context = new TestEccPgpContext(keyStorage);
-            await context.LoadContextAsync();
+            await context.LoadContextAsync().ConfigureAwait(false);
             return context;
         }
 
         [Test]
         public void DeterministicEccKeyDerivation()
         {
-            string ToHex(byte[] data) => string.Concat(data.Select(x => x.ToString("x2")));
+            string ToHex(byte[] data) => string.Concat(data.Select(x => x.ToString("x2", CultureInfo.CurrentCulture)));
 
             for (int i = 0; i < TestData.EccKeyPairs.Length; i++)
             {
                 var keyPair = EccPgpContext.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), i);
+#pragma warning disable CA2201 // Do not raise reserved exception types
                 ECPrivateKeyParameters? privateKey = (keyPair.Private as ECPrivateKeyParameters) ?? 
                     throw new Exception("privateKey can not be a null");
                 ECPublicKeyParameters? publicKey = (keyPair.Public as ECPublicKeyParameters) ?? 
                     throw new Exception("publicKey can not be a null");
-                
+#pragma warning restore CA2201 // Do not raise reserved exception types
+
                 Assert.That(ToHex(privateKey.D.ToByteArrayUnsigned()), Is.EqualTo(TestData.EccKeyPairs[i].Key),
                                 "Private key is not equal to determined");
                 Assert.That(ToHex(publicKey.Q.GetEncoded()), Is.EqualTo(TestData.EccKeyPairs[i].Value),
@@ -64,12 +67,12 @@ namespace TuviPgpLibTests
         [Test]
         public async Task EссEncryptAndDecryptAsync()
         {
-            using EccPgpContext ctx = await InitializeEccPgpContextAsync();
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
             ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
 
             using Stream inputData = new MemoryStream();
             using Stream encryptedData = new MemoryStream();
-            var messageBody = new TextPart() { Text = TestData.TextContent };
+            using var messageBody = new TextPart() { Text = TestData.TextContent };
             messageBody.WriteTo(inputData);
             inputData.Position = 0;
 
@@ -89,19 +92,19 @@ namespace TuviPgpLibTests
         public async Task EccDeterministicKeyPairRestoreAsync()
         {
             using Stream encryptedData = new MemoryStream();
-            using (EccPgpContext ctx = await InitializeEccPgpContextAsync())
+            using (EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false))
             {
                 ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
 
                 using Stream inputData = new MemoryStream();
-                var messageBody = new TextPart() { Text = TestData.TextContent };
+                using var messageBody = new TextPart() { Text = TestData.TextContent };
                 messageBody.WriteTo(inputData);
                 inputData.Position = 0;
                 var encryptedMime = ctx.Encrypt(new List<MailboxAddress> { TestData.GetAccount().GetMailbox() }, inputData);
                 encryptedMime.WriteTo(encryptedData);
             }
 
-            using (EccPgpContext anotherCtx = await InitializeEccPgpContextAsync())
+            using (EccPgpContext anotherCtx = await InitializeEccPgpContextAsync().ConfigureAwait(false))
             {
                 anotherCtx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
 
