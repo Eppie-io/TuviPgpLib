@@ -50,12 +50,10 @@ namespace TuviPgpLibTests
             for (int i = 0; i < TestData.EccKeyPairs.Length; i++)
             {
                 var keyPair = EccPgpContext.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), i);
-#pragma warning disable CA2201 // Do not raise reserved exception types
                 ECPrivateKeyParameters? privateKey = (keyPair.Private as ECPrivateKeyParameters);
                 Assert.That(privateKey, Is.Not.Null, "PrivateKey can not be a null");
                 ECPublicKeyParameters? publicKey = (keyPair.Public as ECPublicKeyParameters);
                 Assert.That(publicKey, Is.Not.Null, "PublicKey can not be a null");
-#pragma warning restore CA2201 // Do not raise reserved exception types
 
                 Assert.That(ToHex(privateKey.D.ToByteArrayUnsigned()), Is.EqualTo(TestData.EccKeyPairs[i].Key),
                                 "Private key is not equal to determined");
