@@ -14,8 +14,7 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
-using Org.BouncyCastle.Crypto.Parameters;
-using System.Globalization;
+using TuviPgpLib.Entities;
 
 namespace TuviPgpLibTests
 {
@@ -43,30 +42,10 @@ namespace TuviPgpLibTests
         }
 
         [Test]
-        public void DeterministicEccKeyDerivation()
-        {
-            string ToHex(byte[] data) => string.Concat(data.Select(x => x.ToString("x2", CultureInfo.CurrentCulture)));
-
-            for (int i = 0; i < TestData.EccKeyPairs.Length; i++)
-            {
-                var keyPair = EccPgpContext.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), i);
-                ECPrivateKeyParameters? privateKey = (keyPair.Private as ECPrivateKeyParameters);
-                Assert.That(privateKey, Is.Not.Null, "PrivateKey can not be a null");
-                ECPublicKeyParameters? publicKey = (keyPair.Public as ECPublicKeyParameters);
-                Assert.That(publicKey, Is.Not.Null, "PublicKey can not be a null");
-
-                Assert.That(ToHex(privateKey.D.ToByteArrayUnsigned()), Is.EqualTo(TestData.EccKeyPairs[i].Key),
-                                "Private key is not equal to determined");
-                Assert.That(ToHex(publicKey.Q.GetEncoded()), Is.EqualTo(TestData.EccKeyPairs[i].Value),
-                                "Public key is not equal to determined");
-            }
-        }
-
-        [Test]
         public async Task EссEncryptAndDecryptAsync()
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
+            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "", KeyCreationReason.Encryption);
 
             using Stream inputData = new MemoryStream();
             using Stream encryptedData = new MemoryStream();
@@ -92,7 +71,7 @@ namespace TuviPgpLibTests
             using Stream encryptedData = new MemoryStream();
             using (EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false))
             {
-                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
+                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "", KeyCreationReason.Encryption);
 
                 using Stream inputData = new MemoryStream();
                 using var messageBody = new TextPart() { Text = TestData.TextContent };
@@ -104,7 +83,7 @@ namespace TuviPgpLibTests
 
             using (EccPgpContext anotherCtx = await InitializeEccPgpContextAsync().ConfigureAwait(false))
             {
-                anotherCtx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
+                anotherCtx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "", KeyCreationReason.Encryption);
 
                 encryptedData.Position = 0;
                 var mime = anotherCtx.Decrypt(encryptedData);
