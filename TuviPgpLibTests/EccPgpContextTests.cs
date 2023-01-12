@@ -14,6 +14,8 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
+using Org.BouncyCastle.Crypto.Parameters;
+using System.Globalization;
 using TuviPgpLib.Entities;
 
 namespace TuviPgpLibTests
@@ -91,6 +93,27 @@ namespace TuviPgpLibTests
                 Assert.That(
                     TestData.TextContent.SequenceEqual(decryptedBody?.Text ?? string.Empty), Is.True,
                     "Data decrypted with restored key is corrupted");
+            }
+        }
+
+        [Test]
+        public async Task DeterministicEccKeyDerivation()
+        {
+            string ToHex(byte[] data) => string.Concat(data.Select(x => x.ToString("x2", CultureInfo.CurrentCulture)));
+            
+            for (int keyIndex = 0; keyIndex < 3; keyIndex++)
+            {
+                using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+                
+                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "", KeyCreationReason.Encryption, keyIndex);
+
+                var listOfKeys = ctx.GetPublicKeys(new List<MailboxAddress> { TestData.GetAccount().GetMailbox() });
+                PgpPublicKey key = listOfKeys.First();
+
+                ECPublicKeyParameters? publicKey = key.GetKey() as ECPublicKeyParameters;
+                Assert.That(publicKey, Is.Not.Null, "PublicKey can not be a null");
+                Assert.That(ToHex(publicKey.Q.GetEncoded()), Is.EqualTo(TestData.PgpPubKey[keyIndex]),
+                                "Public key is not equal to determined");
             }
         }
     }

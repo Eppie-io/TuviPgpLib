@@ -112,7 +112,7 @@ namespace TuviPgpLibImpl
             AsymmetricCipherKeyPair masterKeyPair = DeriveKeyPair(masterPgpKey, masterKeyIndex);
             PgpKeyPair masterPgpKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
 
-            PrivateDerivationKey pgpKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, reason.ToString());
+            PrivateDerivationKey pgpKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterPgpKey, reason.ToString());
             AsymmetricCipherKeyPair encryptionKeyPair = DeriveKeyPair(pgpKey, keyIndex);
             PgpKeyPair pgpSubKeyPair;
             PgpSignatureSubpacketGenerator subpacketGenerator;
