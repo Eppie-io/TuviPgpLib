@@ -77,7 +77,7 @@ namespace TuviPgpLibImpl
 
             if (keyIndex < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(password), "KeyIndex should be greater than or equal to 0.");
+                throw new ArgumentOutOfRangeException(nameof(keyIndex), "KeyIndex should be greater than or equal to 0.");
             }
 
             var generator = CreateEllipticCurveKeyRingGenerator(masterKey, userIdentity, password, reason, keyIndex);
@@ -108,23 +108,23 @@ namespace TuviPgpLibImpl
         private PgpKeyRingGenerator CreateEllipticCurveKeyRingGenerator(MasterKey masterKey, string userIdentity, string password, KeyCreationReason reason, int keyIndex, SymmetricKeyAlgorithmTag algorithm = SymmetricKeyAlgorithmTag.Aes128)
         {
             int masterKeyIndex = 0;
-            PrivateDerivationKey masterPgpKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, userIdentity);
-            AsymmetricCipherKeyPair masterKeyPair = DeriveKeyPair(masterPgpKey, masterKeyIndex);
-            PgpKeyPair masterPgpKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
+            PrivateDerivationKey accountKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, userIdentity);
+            AsymmetricCipherKeyPair masterKeyPair = DeriveKeyPair(accountKey, masterKeyIndex);
+            PgpKeyPair pgpMasterKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
 
-            PrivateDerivationKey pgpKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterPgpKey, reason.ToString());
-            AsymmetricCipherKeyPair encryptionKeyPair = DeriveKeyPair(pgpKey, keyIndex);
+            PrivateDerivationKey specializedAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, reason.ToString());
+            AsymmetricCipherKeyPair subKeyPair = DeriveKeyPair(specializedAccountKey, keyIndex);
             PgpKeyPair pgpSubKeyPair;
             PgpSignatureSubpacketGenerator subpacketGenerator;
 
             switch (reason)
             {
                 case KeyCreationReason.Encryption:
-                    pgpSubKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDH, encryptionKeyPair, KeyCreationTime);
+                    pgpSubKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDH, subKeyPair, KeyCreationTime);
                     subpacketGenerator = CreateEncryptionSubpacketGenerator(ExpirationTime);
                     break;
                 case KeyCreationReason.Signature:
-                    pgpSubKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, encryptionKeyPair, KeyCreationTime);
+                    pgpSubKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, subKeyPair, KeyCreationTime);
                     subpacketGenerator = CreateSignatureSubpacketGenerator(ExpirationTime);
                     break;
                 default:
@@ -135,7 +135,7 @@ namespace TuviPgpLibImpl
 
             PgpKeyRingGenerator keyRingGenerator = new PgpKeyRingGenerator(
                 certificationLevel: PgpSignature.PositiveCertification,
-                masterKey: masterPgpKeyPair,
+                masterKey: pgpMasterKeyPair,
                 id: userIdentity,
                 encAlgorithm: algorithm,
                 rawPassPhrase: Encoding.UTF8.GetBytes(password),
