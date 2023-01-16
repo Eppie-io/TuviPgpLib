@@ -31,6 +31,6 @@ namespace TuviPgpLib
         /// for choosen reason <paramref name="reason"/> with choosen index <paramref name="keyIndex"/>
         /// and protected with <paramref name="password"/>.
         /// </summary>
-        void DeriveKeyPair(MasterKey masterKey, string userIdentity, string password, KeyCreationReason reason, int keyIndex);
+        void DeriveKeyPair(MasterKey masterKey, string userIdentity, string password, int keyIndex);
     }
 }

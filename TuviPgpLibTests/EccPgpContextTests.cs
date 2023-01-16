@@ -14,9 +14,9 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
+using MimeKit.Cryptography;
 using Org.BouncyCastle.Crypto.Parameters;
 using System.Globalization;
-using TuviPgpLib.Entities;
 
 namespace TuviPgpLibTests
 {
@@ -47,7 +47,7 @@ namespace TuviPgpLibTests
         public async Task EссEncryptAndDecryptAsync()
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "", KeyCreationReason.Encryption);
+            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
 
             using Stream inputData = new MemoryStream();
             using Stream encryptedData = new MemoryStream();
@@ -73,7 +73,7 @@ namespace TuviPgpLibTests
             using Stream encryptedData = new MemoryStream();
             using (EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false))
             {
-                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "", KeyCreationReason.Encryption);
+                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
 
                 using Stream inputData = new MemoryStream();
                 using var messageBody = new TextPart() { Text = TestData.TextContent };
@@ -85,7 +85,7 @@ namespace TuviPgpLibTests
 
             using (EccPgpContext anotherCtx = await InitializeEccPgpContextAsync().ConfigureAwait(false))
             {
-                anotherCtx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "", KeyCreationReason.Encryption);
+                anotherCtx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
 
                 encryptedData.Position = 0;
                 var mime = anotherCtx.Decrypt(encryptedData);
@@ -105,7 +105,7 @@ namespace TuviPgpLibTests
             {
                 using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
                 
-                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "", KeyCreationReason.Encryption, keyIndex);
+                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "", keyIndex);
 
                 var listOfKeys = ctx.GetPublicKeys(new List<MailboxAddress> { TestData.GetAccount().GetMailbox() });
                 PgpPublicKey key = listOfKeys.First();
@@ -114,6 +114,68 @@ namespace TuviPgpLibTests
                 Assert.That(publicKey, Is.Not.Null, "PublicKey can not be a null");
                 Assert.That(ToHex(publicKey.Q.GetEncoded()), Is.EqualTo(TestData.PgpPubKey[keyIndex]),
                                 "Public key is not equal to determined");
+            }
+        }
+
+        [Test]
+        public async Task EссCanSignAsync()
+        {
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            Assert.IsFalse(ctx.CanSign(TestData.GetAccount().GetMailbox()));
+            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "", 0);
+            Assert.IsTrue(ctx.CanSign(TestData.GetAccount().GetMailbox()));
+        }
+
+        [Test]
+        public async Task EссSignAsync()
+        {
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
+
+            using Stream inputData = new MemoryStream();
+            using Stream encryptedData = new MemoryStream();
+            using var messageBody = new TextPart() { Text = TestData.TextContent };
+            messageBody.WriteTo(inputData);
+            inputData.Position = 0;
+
+            var signedMime = ctx.Sign(TestData.GetAccount().GetMailbox(), DigestAlgorithm.Sha512, inputData);
+            inputData.Position = 0;
+            signedMime.WriteTo(encryptedData);
+            encryptedData.Position = 0;
+            var signatures = ctx.Verify(inputData, encryptedData);
+            
+            foreach (IDigitalSignature signature in signatures)
+            {
+                Assert.That(signature.Verify(), Is.True);
+            }
+        }
+
+        [Test]
+        public async Task EссEncryptAndSignAsync()
+        {
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
+
+            using Stream inputData = new MemoryStream();
+            using Stream encryptedData = new MemoryStream();
+            using var messageBody = new TextPart() { Text = TestData.TextContent };
+            messageBody.WriteTo(inputData);
+            inputData.Position = 0;
+
+            var signedMime = ctx.SignAndEncrypt(
+                signer: TestData.GetAccount().GetMailbox(),
+                digestAlgo: DigestAlgorithm.Sha512, 
+                recipients: new List<MailboxAddress>() { TestData.GetAccount().GetMailbox() }, 
+                content: inputData);
+
+            inputData.Position = 0;
+            signedMime.WriteTo(encryptedData);
+            encryptedData.Position = 0;
+            ctx.Decrypt(encryptedData, out DigitalSignatureCollection signatures);
+
+            foreach (IDigitalSignature signature in signatures)
+            {
+                Assert.That(signature.Verify(), Is.True);
             }
         }
     }
