@@ -14,7 +14,6 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
-using KeyDerivation.Entities;
 using KeyDerivation.Keys;
 using KeyDerivationLib;
 using MimeKit.Cryptography;
@@ -34,7 +33,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using TuviPgpLib;
-using TuviPgpLib.Entities;
 
 namespace TuviPgpLibImpl
 {
