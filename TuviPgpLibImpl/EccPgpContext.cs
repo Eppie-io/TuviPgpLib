@@ -63,7 +63,6 @@ namespace TuviPgpLibImpl
         /// <param name="masterKey">Master key.</param>
         /// <param name="userIdentity">User Id (email).</param>
         /// <param name="password">Password.</param>
-        /// <param name="reason">Reason the key will be used (Encryption or Signing).</param>
         /// <param name="keyIndex">Key Index. Equals to 0 if not set.</param>
         public void DeriveKeyPair(MasterKey masterKey, string userIdentity, string password, int keyIndex = 0)
         {
@@ -93,7 +92,7 @@ namespace TuviPgpLibImpl
             Import(generator.GeneratePublicKeyRing());
         }
 
-        internal static AsymmetricCipherKeyPair DeriveKeyPair(PrivateDerivationKey derivationKey, int keyIndex)
+        public static AsymmetricCipherKeyPair DeriveKeyPair(PrivateDerivationKey derivationKey, int keyIndex)
         {
             const string algorithm = "EC";
 
