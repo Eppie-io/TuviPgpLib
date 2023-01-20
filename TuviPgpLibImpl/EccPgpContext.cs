@@ -51,6 +51,13 @@ namespace TuviPgpLibImpl
             Encryption = 1
         };
 
+        enum KeyType : uint
+        {
+            MasterKey = 0,
+            SignatureKey = 1,
+            EncryptionKey = 2
+        };
+
         protected EccPgpContext(IKeyStorage storage)
             : base(storage)
         {
@@ -117,19 +124,19 @@ namespace TuviPgpLibImpl
             PrivateDerivationKey accountKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, userIdentity);
             AsymmetricCipherKeyPair masterKeyPair = DeriveKeyPair(accountKey, masterKeyIndex);
             PgpKeyPair pgpMasterKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
-            
+            PgpSignatureSubpacketGenerator certificationSubpacketGenerator = CreateSubpacketGenerator(KeyType.MasterKey, ExpirationTime);
+
             PrivateDerivationKey encAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, KeyCreationReason.Encryption.ToString());
             AsymmetricCipherKeyPair encSubKeyPair = DeriveKeyPair(encAccountKey, keyIndex);
             PgpKeyPair encPgpSubKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDH, encSubKeyPair, KeyCreationTime);
-            PgpSignatureSubpacketGenerator encSubpacketGenerator = CreateEncryptionSubpacketGenerator(ExpirationTime);
+            PgpSignatureSubpacketGenerator encSubpacketGenerator = CreateSubpacketGenerator(KeyType.EncryptionKey, ExpirationTime);
             
             PrivateDerivationKey signAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, KeyCreationReason.Encryption.ToString());
             AsymmetricCipherKeyPair signSubKeyPair = DeriveKeyPair(signAccountKey, keyIndex);
             PgpKeyPair signPgpSubKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, signSubKeyPair, KeyCreationTime);
-            PgpSignatureSubpacketGenerator signSubpacketGenerator = CreateSignatureSubpacketGenerator(ExpirationTime);
+            PgpSignatureSubpacketGenerator signSubpacketGenerator = CreateSubpacketGenerator(KeyType.SignatureKey, ExpirationTime);
 
-            var certificationSubpacketGenerator = CreateCertificationSubpacketGenerator(ExpirationTime);
-
+            
             PgpKeyRingGenerator keyRingGenerator = new PgpKeyRingGenerator(
                 certificationLevel: PgpSignature.PositiveCertification,
                 masterKey: pgpMasterKeyPair,
@@ -154,11 +161,23 @@ namespace TuviPgpLibImpl
             return keyRingGenerator;
         }
 
-        private PgpSignatureSubpacketGenerator CreateCertificationSubpacketGenerator(long expirationTime)
+        private PgpSignatureSubpacketGenerator CreateSubpacketGenerator(KeyType type, long expirationTime)
         {
             var subpacketGenerator = new PgpSignatureSubpacketGenerator();
 
-            subpacketGenerator.SetKeyFlags(false, PgpKeyFlags.CanCertify);
+            switch (type)
+            {
+                case KeyType.MasterKey:
+                    subpacketGenerator.SetKeyFlags(false, PgpKeyFlags.CanCertify);
+                    break;
+                case KeyType.SignatureKey:
+                    subpacketGenerator.SetKeyFlags(false, PgpKeyFlags.CanSign);
+                    break;
+                case KeyType.EncryptionKey:
+                    subpacketGenerator.SetKeyFlags(false, PgpKeyFlags.CanEncryptCommunications | PgpKeyFlags.CanEncryptStorage);
+                    break;
+            }
+
             subpacketGenerator.SetPreferredSymmetricAlgorithms(false, this.EnabledEncryptionAlgorithms.Select(e => (int)e).ToArray());
             subpacketGenerator.SetPreferredHashAlgorithms(false, this.EnabledDigestAlgorithms.Select(e => (int)e).ToArray());
 
@@ -169,42 +188,6 @@ namespace TuviPgpLibImpl
             }
 
             subpacketGenerator.SetFeature(false, Org.BouncyCastle.Bcpg.Sig.Features.FEATURE_MODIFICATION_DETECTION);
-
-            return subpacketGenerator;
-        }
-
-        private PgpSignatureSubpacketGenerator CreateSignatureSubpacketGenerator(long expirationTime)
-        {
-            var subpacketGenerator = new PgpSignatureSubpacketGenerator();
-
-            subpacketGenerator.SetKeyFlags(false, PgpKeyFlags.CanSign);
-            subpacketGenerator.SetPreferredSymmetricAlgorithms(false, this.EnabledEncryptionAlgorithms.Select(e => (int)e).ToArray());
-            subpacketGenerator.SetPreferredHashAlgorithms(false, this.EnabledDigestAlgorithms.Select(e => (int)e).ToArray());
-
-            if (expirationTime > 0)
-            {
-                subpacketGenerator.SetKeyExpirationTime(false, expirationTime);
-                subpacketGenerator.SetSignatureExpirationTime(false, expirationTime);
-            }
-
-            subpacketGenerator.SetFeature(false, Org.BouncyCastle.Bcpg.Sig.Features.FEATURE_MODIFICATION_DETECTION);
-
-            return subpacketGenerator;
-        }
-
-        private PgpSignatureSubpacketGenerator CreateEncryptionSubpacketGenerator(long expirationTime)
-        {
-            var subpacketGenerator = new PgpSignatureSubpacketGenerator();
-
-            subpacketGenerator.SetKeyFlags(false, PgpKeyFlags.CanEncryptCommunications | PgpKeyFlags.CanEncryptStorage);
-            subpacketGenerator.SetPreferredSymmetricAlgorithms(false, this.EnabledEncryptionAlgorithms.Select(e => (int)e).ToArray());
-            subpacketGenerator.SetPreferredHashAlgorithms(false, this.EnabledDigestAlgorithms.Select(e => (int)e).ToArray());
-
-            if (expirationTime > 0)
-            {
-                subpacketGenerator.SetKeyExpirationTime(false, expirationTime);
-                subpacketGenerator.SetSignatureExpirationTime(false, expirationTime);
-            }
 
             return subpacketGenerator;
         }
