@@ -203,13 +203,9 @@ namespace TuviPgpLibImpl
             {
                 foreach (PgpSecretKey secretKey in item.GetSecretKeys())
                 {
-                    if (secretKey.IsSigningKey && !secretKey.IsMasterKey)
+                    if (IsSigningNotMaster(secretKey))
                     {
-                        PgpPublicKey publicKey = secretKey.PublicKey;
-                        if (!publicKey.IsRevoked() && !OpenPgpContext.IsExpired(publicKey))
-                        {
-                            return secretKey;
-                        }
+                        return secretKey;
                     }
                 }
             }
@@ -226,13 +222,23 @@ namespace TuviPgpLibImpl
 
             foreach (PgpSecretKey item in EnumerateSecretKeys(signer))
             {
-                if (item.IsSigningKey && !item.IsMasterKey)
+                if (IsSigningNotMaster(item))
                 {
-                    PgpPublicKey publicKey = item.PublicKey;
-                    if (!publicKey.IsRevoked() && !OpenPgpContext.IsExpired(publicKey))
-                    {
-                        return true;
-                    }
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsSigningNotMaster (PgpSecretKey key)
+        {
+            if (key.IsSigningKey && !key.IsMasterKey)
+            {
+                PgpPublicKey publicKey = key.PublicKey;
+                if (!publicKey.IsRevoked() && !OpenPgpContext.IsExpired(publicKey))
+                {
+                    return true;
                 }
             }
 
