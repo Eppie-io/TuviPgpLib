@@ -14,6 +14,7 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
+using MimeKit.Cryptography;
 using Org.BouncyCastle.Crypto.Parameters;
 using System.Globalization;
 
@@ -40,26 +41,6 @@ namespace TuviPgpLibTests
             var context = new TestEccPgpContext(keyStorage);
             await context.LoadContextAsync().ConfigureAwait(false);
             return context;
-        }
-
-        [Test]
-        public void DeterministicEccKeyDerivation()
-        {
-            string ToHex(byte[] data) => string.Concat(data.Select(x => x.ToString("x2", CultureInfo.CurrentCulture)));
-
-            for (int i = 0; i < TestData.EccKeyPairs.Length; i++)
-            {
-                var keyPair = EccPgpContext.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), i);
-                ECPrivateKeyParameters? privateKey = (keyPair.Private as ECPrivateKeyParameters);
-                Assert.That(privateKey, Is.Not.Null, "PrivateKey can not be a null");
-                ECPublicKeyParameters? publicKey = (keyPair.Public as ECPublicKeyParameters);
-                Assert.That(publicKey, Is.Not.Null, "PublicKey can not be a null");
-
-                Assert.That(ToHex(privateKey.D.ToByteArrayUnsigned()), Is.EqualTo(TestData.EccKeyPairs[i].Key),
-                                "Private key is not equal to determined");
-                Assert.That(ToHex(publicKey.Q.GetEncoded()), Is.EqualTo(TestData.EccKeyPairs[i].Value),
-                                "Public key is not equal to determined");
-            }
         }
 
         [Test]
@@ -112,6 +93,89 @@ namespace TuviPgpLibTests
                 Assert.That(
                     TestData.TextContent.SequenceEqual(decryptedBody?.Text ?? string.Empty), Is.True,
                     "Data decrypted with restored key is corrupted");
+            }
+        }
+
+        [Test]
+        public async Task DeterministicEccKeyDerivation()
+        {
+            string ToHex(byte[] data) => string.Concat(data.Select(x => x.ToString("x2", CultureInfo.CurrentCulture)));
+            
+            for (int keyIndex = 0; keyIndex < 3; keyIndex++)
+            {
+                using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+                
+                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "", keyIndex);
+
+                var listOfKeys = ctx.GetPublicKeys(new List<MailboxAddress> { TestData.GetAccount().GetMailbox() });
+                PgpPublicKey key = listOfKeys.First();
+
+                ECPublicKeyParameters? publicKey = key.GetKey() as ECPublicKeyParameters;
+                Assert.That(publicKey, Is.Not.Null, "PublicKey can not be a null");
+                Assert.That(ToHex(publicKey.Q.GetEncoded()), Is.EqualTo(TestData.PgpPubKey[keyIndex]),
+                                "Public key is not equal to determined");
+            }
+        }
+
+        [Test]
+        public async Task EссCanSignAsync()
+        {
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            Assert.IsFalse(ctx.CanSign(TestData.GetAccount().GetMailbox()));
+            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "", 0);
+            Assert.IsTrue(ctx.CanSign(TestData.GetAccount().GetMailbox()));
+        }
+
+        [Test]
+        public async Task EссSignAsync()
+        {
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
+
+            using Stream inputData = new MemoryStream();
+            using Stream encryptedData = new MemoryStream();
+            using var messageBody = new TextPart() { Text = TestData.TextContent };
+            messageBody.WriteTo(inputData);
+            inputData.Position = 0;
+
+            var signedMime = ctx.Sign(TestData.GetAccount().GetMailbox(), DigestAlgorithm.Sha512, inputData);
+            inputData.Position = 0;
+            signedMime.WriteTo(encryptedData);
+            encryptedData.Position = 0;
+            var signatures = ctx.Verify(inputData, encryptedData);
+            
+            foreach (IDigitalSignature signature in signatures)
+            {
+                Assert.That(signature.Verify(), Is.True);
+            }
+        }
+
+        [Test]
+        public async Task EссEncryptAndSignAsync()
+        {
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), "");
+
+            using Stream inputData = new MemoryStream();
+            using Stream encryptedData = new MemoryStream();
+            using var messageBody = new TextPart() { Text = TestData.TextContent };
+            messageBody.WriteTo(inputData);
+            inputData.Position = 0;
+
+            var signedMime = ctx.SignAndEncrypt(
+                signer: TestData.GetAccount().GetMailbox(),
+                digestAlgo: DigestAlgorithm.Sha512, 
+                recipients: new List<MailboxAddress>() { TestData.GetAccount().GetMailbox() }, 
+                content: inputData);
+
+            inputData.Position = 0;
+            signedMime.WriteTo(encryptedData);
+            encryptedData.Position = 0;
+            ctx.Decrypt(encryptedData, out DigitalSignatureCollection signatures);
+
+            foreach (IDigitalSignature signature in signatures)
+            {
+                Assert.That(signature.Verify(), Is.True);
             }
         }
     }
