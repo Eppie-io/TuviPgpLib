@@ -14,6 +14,7 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
+using System;
 using System.Linq;
 
 namespace TuviPgpLib.Entities
@@ -26,7 +27,7 @@ namespace TuviPgpLib.Entities
     {
     }
 
-    public class PgpKeyBundle
+    public class PgpKeyBundle : IEquatable<PgpKeyBundle>
     {
 #pragma warning disable CA1819 // Properties should not return arrays
         public byte[] Data { get; set; }
@@ -34,19 +35,21 @@ namespace TuviPgpLib.Entities
 
         public override bool Equals(object obj)
         {
-            if (obj is PgpKeyBundle other)
+            return Equals(obj as PgpKeyBundle);
+        }
+
+        public bool Equals(PgpKeyBundle other)
+        {
+            if (this == other)
             {
-                if ((Data == null && other.Data == null) ||
-                     Data.SequenceEqual(other.Data))
-                {
-                    return true;
-                }
+                return true;
+            }
+            if (other == null)
+            {
                 return false;
             }
-            else
-            {
-                return false;
-            }
+
+            return Data.SequenceEqual(other.Data);
         }
 
         public override int GetHashCode()
