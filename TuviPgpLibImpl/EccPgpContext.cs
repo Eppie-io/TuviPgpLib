@@ -65,12 +65,10 @@ namespace TuviPgpLibImpl
 
         /// <summary>
         /// Realization of IEllipticCurveCryptographyPgpContext interface. 
-        /// Creates keypair and add (import) it to the current context.
+        /// Creates keypairs and add (import) it to the current context.
         /// </summary>
         /// <param name="masterKey">Master key.</param>
         /// <param name="userIdentity">User Id (email).</param>
-        /// <param name="password">Password.</param>
-        /// <param name="keyIndex">Key Index. Equals to 0 if not set.</param>
         public void DeriveKeyPair(MasterKey masterKey, string userIdentity)
         {
             if (masterKey == null)
@@ -89,6 +87,12 @@ namespace TuviPgpLibImpl
             Import(generator.GeneratePublicKeyRing());
         }
 
+        /// <summary>
+        /// Creates child keypair from choosen derivationKey with specific keyIndex.
+        /// </summary>
+        /// <param name="derivationKey">Derivation key.</param>
+        /// <param name="keyIndex">Key index.</param>
+        /// <returns>Derived key pair.</returns>
         public static AsymmetricCipherKeyPair DeriveKeyPair(PrivateDerivationKey derivationKey, int keyIndex)
         {
             const string algorithm = "EC";
@@ -184,6 +188,12 @@ namespace TuviPgpLibImpl
             return subpacketGenerator;
         }
 
+        /// <summary>
+        /// Return signing (not master) key of choosen mailbox
+        /// </summary>
+        /// <param name="mailbox">Mailbox.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Signing key.</returns>
         public override PgpSecretKey GetSigningKey(MailboxAddress mailbox, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (mailbox == null)
