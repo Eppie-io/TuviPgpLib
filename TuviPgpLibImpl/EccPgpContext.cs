@@ -112,7 +112,7 @@ namespace TuviPgpLibImpl
             return new AsymmetricCipherKeyPair(publicKey, privateKey);
         }
 
-        private PgpKeyRingGenerator CreateEllipticCurveKeyRingGenerator(MasterKey masterKey, string userIdentity, SymmetricKeyAlgorithmTag algorithm = SymmetricKeyAlgorithmTag.Aes128)
+        private PgpKeyRingGenerator CreateEllipticCurveKeyRingGenerator(MasterKey masterKey, string userIdentity)
         {
             int keyIndex = 0;
             string password = string.Empty;
@@ -137,7 +137,7 @@ namespace TuviPgpLibImpl
                 certificationLevel: PgpSignature.PositiveCertification,
                 masterKey: pgpMasterKeyPair,
                 id: userIdentity,
-                encAlgorithm: algorithm,
+                encAlgorithm: SymmetricKeyAlgorithmTag.Aes128,
                 rawPassPhrase: Encoding.UTF8.GetBytes(password),
                 useSha1: true,
                 hashedPackets: certificationSubpacketGenerator.Generate(),
