@@ -71,7 +71,7 @@ namespace TuviPgpLibImpl
         /// <param name="userIdentity">User Id (email).</param>
         /// <param name="password">Password.</param>
         /// <param name="keyIndex">Key Index. Equals to 0 if not set.</param>
-        public void DeriveKeyPair(MasterKey masterKey, string userIdentity, string password, int keyIndex = 0)
+        public void DeriveKeyPair(MasterKey masterKey, string userIdentity)
         {
             if (masterKey == null)
             {
@@ -83,17 +83,7 @@ namespace TuviPgpLibImpl
                 throw new ArgumentNullException(nameof(userIdentity), "Parameter is not set.");
             }
 
-            if (password == null)
-            {
-                throw new ArgumentNullException(nameof(password), "Parameter is not set.");
-            }
-
-            if (keyIndex < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(keyIndex), "KeyIndex should be greater than or equal to 0.");
-            }
-
-            var generator = CreateEllipticCurveKeyRingGenerator(masterKey, userIdentity, password, keyIndex);
+            var generator = CreateEllipticCurveKeyRingGenerator(masterKey, userIdentity);
 
             Import(generator.GenerateSecretKeyRing());
             Import(generator.GeneratePublicKeyRing());
@@ -118,11 +108,13 @@ namespace TuviPgpLibImpl
             return new AsymmetricCipherKeyPair(publicKey, privateKey);
         }
 
-        private PgpKeyRingGenerator CreateEllipticCurveKeyRingGenerator(MasterKey masterKey, string userIdentity, string password, int keyIndex, SymmetricKeyAlgorithmTag algorithm = SymmetricKeyAlgorithmTag.Aes128)
+        private PgpKeyRingGenerator CreateEllipticCurveKeyRingGenerator(MasterKey masterKey, string userIdentity, SymmetricKeyAlgorithmTag algorithm = SymmetricKeyAlgorithmTag.Aes128)
         {
-            int masterKeyIndex = 0;
+            int keyIndex = 0;
+            string password = string.Empty;
+
             PrivateDerivationKey accountKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, userIdentity);
-            AsymmetricCipherKeyPair masterKeyPair = DeriveKeyPair(accountKey, masterKeyIndex);
+            AsymmetricCipherKeyPair masterKeyPair = DeriveKeyPair(accountKey, keyIndex);
             PgpKeyPair pgpMasterKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator certificationSubpacketGenerator = CreateSubpacketGenerator(KeyType.MasterKey, ExpirationTime);
 

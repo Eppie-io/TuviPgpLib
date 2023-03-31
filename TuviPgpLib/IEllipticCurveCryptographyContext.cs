@@ -29,6 +29,6 @@ namespace TuviPgpLib
         /// ECC keys will be derived from <paramref name="masterKey"/> for specified <paramref name="userIdentity"/>
         /// with choosen <paramref name="keyIndex"/> and protected with <paramref name="password"/>.
         /// </summary>
-        void DeriveKeyPair(MasterKey masterKey, string userIdentity, string password, int keyIndex);
+        void DeriveKeyPair(MasterKey masterKey, string userIdentity);
     }
 }
