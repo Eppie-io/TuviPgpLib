@@ -26,9 +26,8 @@ namespace TuviPgpLib
     {
         /// <summary>
         /// Create new PGP keyring.
-        /// ECC keys will be derived from <paramref name="masterKey"/> for specified <paramref name="userIdentity"/>
-        /// with choosen <paramref name="keyIndex"/> and protected with <paramref name="password"/>.
+        /// ECC keys will be derived from <paramref name="masterKey"/> for specified <paramref name="userIdentity"/>.
         /// </summary>
-        void DeriveKeyPair(MasterKey masterKey, string userIdentity, string password, int keyIndex);
+        void DeriveKeyPair(MasterKey masterKey, string userIdentity);
     }
 }

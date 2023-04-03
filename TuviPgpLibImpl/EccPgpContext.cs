@@ -65,13 +65,11 @@ namespace TuviPgpLibImpl
 
         /// <summary>
         /// Realization of IEllipticCurveCryptographyPgpContext interface. 
-        /// Creates keypair and add (import) it to the current context.
+        /// Creates keypairs and add (import) it to the current context.
         /// </summary>
         /// <param name="masterKey">Master key.</param>
         /// <param name="userIdentity">User Id (email).</param>
-        /// <param name="password">Password.</param>
-        /// <param name="keyIndex">Key Index. Equals to 0 if not set.</param>
-        public void DeriveKeyPair(MasterKey masterKey, string userIdentity, string password, int keyIndex = 0)
+        public void DeriveKeyPair(MasterKey masterKey, string userIdentity)
         {
             if (masterKey == null)
             {
@@ -83,22 +81,18 @@ namespace TuviPgpLibImpl
                 throw new ArgumentNullException(nameof(userIdentity), "Parameter is not set.");
             }
 
-            if (password == null)
-            {
-                throw new ArgumentNullException(nameof(password), "Parameter is not set.");
-            }
-
-            if (keyIndex < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(keyIndex), "KeyIndex should be greater than or equal to 0.");
-            }
-
-            var generator = CreateEllipticCurveKeyRingGenerator(masterKey, userIdentity, password, keyIndex);
+            var generator = CreateEllipticCurveKeyRingGenerator(masterKey, userIdentity);
 
             Import(generator.GenerateSecretKeyRing());
             Import(generator.GeneratePublicKeyRing());
         }
 
+        /// <summary>
+        /// Creates child keypair from choosen derivationKey with specific keyIndex.
+        /// </summary>
+        /// <param name="derivationKey">Derivation key.</param>
+        /// <param name="keyIndex">Key index.</param>
+        /// <returns>Derived key pair.</returns>
         public static AsymmetricCipherKeyPair DeriveKeyPair(PrivateDerivationKey derivationKey, int keyIndex)
         {
             const string algorithm = "EC";
@@ -118,11 +112,13 @@ namespace TuviPgpLibImpl
             return new AsymmetricCipherKeyPair(publicKey, privateKey);
         }
 
-        private PgpKeyRingGenerator CreateEllipticCurveKeyRingGenerator(MasterKey masterKey, string userIdentity, string password, int keyIndex, SymmetricKeyAlgorithmTag algorithm = SymmetricKeyAlgorithmTag.Aes128)
+        private PgpKeyRingGenerator CreateEllipticCurveKeyRingGenerator(MasterKey masterKey, string userIdentity)
         {
-            int masterKeyIndex = 0;
+            int keyIndex = 0;
+            string password = string.Empty;
+
             PrivateDerivationKey accountKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, userIdentity);
-            AsymmetricCipherKeyPair masterKeyPair = DeriveKeyPair(accountKey, masterKeyIndex);
+            AsymmetricCipherKeyPair masterKeyPair = DeriveKeyPair(accountKey, keyIndex);
             PgpKeyPair pgpMasterKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator certificationSubpacketGenerator = CreateSubpacketGenerator(KeyType.MasterKey, ExpirationTime);
 
@@ -141,7 +137,7 @@ namespace TuviPgpLibImpl
                 certificationLevel: PgpSignature.PositiveCertification,
                 masterKey: pgpMasterKeyPair,
                 id: userIdentity,
-                encAlgorithm: algorithm,
+                encAlgorithm: SymmetricKeyAlgorithmTag.Aes128,
                 rawPassPhrase: Encoding.UTF8.GetBytes(password),
                 useSha1: true,
                 hashedPackets: certificationSubpacketGenerator.Generate(),
@@ -192,6 +188,12 @@ namespace TuviPgpLibImpl
             return subpacketGenerator;
         }
 
+        /// <summary>
+        /// Return signing (not master) key of choosen mailbox
+        /// </summary>
+        /// <param name="mailbox">Mailbox.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Signing key.</returns>
         public override PgpSecretKey GetSigningKey(MailboxAddress mailbox, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (mailbox == null)
