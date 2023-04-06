@@ -15,6 +15,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 using MimeKit.Cryptography;
+using Org.BouncyCastle.Bcpg;
 using Org.BouncyCastle.Crypto.Parameters;
 using System.Globalization;
 
@@ -100,15 +101,29 @@ namespace TuviPgpLibTests
         public async Task DeterministicEccKeyDerivation()
         {
             string ToHex(byte[] data) => string.Concat(data.Select(x => x.ToString("x2", CultureInfo.CurrentCulture)));
-           
-            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);            
+
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
             ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+
+            var allPublicKeys = ctx.EnumerateSecretKeys().ToList();
+            Assert.That(allPublicKeys.Count, Is.EqualTo(3));
+            Assert.That(KeysEquals(allPublicKeys[0], allPublicKeys[1]), Is.False);
+            Assert.That(KeysEquals(allPublicKeys[0], allPublicKeys[2]), Is.False);
+            Assert.That(KeysEquals(allPublicKeys[1], allPublicKeys[2]), Is.False);
+
             var listOfKeys = ctx.GetPublicKeys(new List<MailboxAddress> { TestData.GetAccount().GetMailbox() });
             PgpPublicKey key = listOfKeys.First();
             ECPublicKeyParameters? publicKey = key.GetKey() as ECPublicKeyParameters;
             Assert.That(publicKey, Is.Not.Null, "PublicKey can not be a null");
             Assert.That(ToHex(publicKey.Q.GetEncoded()), Is.EqualTo(TestData.PgpPubKey),
-                            "Public key is not equal to determined");           
+                            "Public key is not equal to determined");
+
+            bool KeysEquals(PgpSecretKey left, PgpSecretKey right)
+            {
+                var keyLeft = ((ECPublicBcpgKey)left.PublicKey.PublicKeyPacket.Key).EncodedPoint;
+                var keyRight = ((ECPublicBcpgKey)right.PublicKey.PublicKeyPacket.Key).EncodedPoint;
+                return Equals(keyLeft, keyRight);
+            }
         }
 
         [Test]
@@ -137,7 +152,7 @@ namespace TuviPgpLibTests
             signedMime.WriteTo(encryptedData);
             encryptedData.Position = 0;
             var signatures = ctx.Verify(inputData, encryptedData);
-            
+
             foreach (IDigitalSignature signature in signatures)
             {
                 Assert.That(signature.Verify(), Is.True);
@@ -158,8 +173,8 @@ namespace TuviPgpLibTests
 
             var signedMime = ctx.SignAndEncrypt(
                 signer: TestData.GetAccount().GetMailbox(),
-                digestAlgo: DigestAlgorithm.Sha512, 
-                recipients: new List<MailboxAddress>() { TestData.GetAccount().GetMailbox() }, 
+                digestAlgo: DigestAlgorithm.Sha512,
+                recipients: new List<MailboxAddress>() { TestData.GetAccount().GetMailbox() },
                 content: inputData);
 
             inputData.Position = 0;

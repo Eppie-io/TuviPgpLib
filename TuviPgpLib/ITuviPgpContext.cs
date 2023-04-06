@@ -39,10 +39,10 @@ namespace TuviPgpLib
         /// <summary>
         /// Export public PGP keyring bundle in either armored or binary formats.
         /// </summary>
-        /// <param name="userIdentity">Identify which keys should be exported.</param>
+        /// <param name="userIdentities">Identify which keys should be exported.</param>
         /// <param name="outputStream">Key export data stream.</param>
         /// <param name="isArmored">Specifies if keys should be exported armored or not.</param>
-        void ExportPublicKeys(IEnumerable<UserIdentity> userIdentity, Stream outputStream, bool isArmored = false);
+        void ExportPublicKeys(IEnumerable<UserIdentity> userIdentities, Stream outputStream, bool isArmored = false);
 
         /// <summary>
         /// Export armored public keyring containing public key with <paramref name="keyId"/> to <paramref name="stream"/>.

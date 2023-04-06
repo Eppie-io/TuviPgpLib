@@ -16,8 +16,8 @@
 
 using KeyDerivation.Keys;
 using KeyDerivationLib;
-using MimeKit.Cryptography;
 using MimeKit;
+using MimeKit.Cryptography;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X9;
 using Org.BouncyCastle.Bcpg;
@@ -29,6 +29,7 @@ using Org.BouncyCastle.Math.EC;
 using Org.BouncyCastle.Math.EC.Multiplier;
 using Org.BouncyCastle.Security;
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -126,13 +127,14 @@ namespace TuviPgpLibImpl
             AsymmetricCipherKeyPair encSubKeyPair = DeriveKeyPair(encAccountKey, keyIndex);
             PgpKeyPair encPgpSubKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDH, encSubKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator encSubpacketGenerator = CreateSubpacketGenerator(KeyType.EncryptionKey, ExpirationTime);
-            
-            PrivateDerivationKey signAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, KeyCreationReason.Encryption.ToString());
+
+            PrivateDerivationKey signAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, KeyCreationReason.Signature.ToString());
             AsymmetricCipherKeyPair signSubKeyPair = DeriveKeyPair(signAccountKey, keyIndex);
             PgpKeyPair signPgpSubKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, signSubKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator signSubpacketGenerator = CreateSubpacketGenerator(KeyType.SignatureKey, ExpirationTime);
 
-            
+            Debug.Assert(encAccountKey != signAccountKey);
+
             PgpKeyRingGenerator keyRingGenerator = new PgpKeyRingGenerator(
                 certificationLevel: PgpSignature.PositiveCertification,
                 masterKey: pgpMasterKeyPair,
@@ -233,7 +235,7 @@ namespace TuviPgpLibImpl
             return false;
         }
 
-        private static bool IsSigningNotMaster (PgpSecretKey key)
+        private static bool IsSigningNotMaster(PgpSecretKey key)
         {
             if (key.IsSigningKey && !key.IsMasterKey)
             {
