@@ -83,9 +83,9 @@ namespace TuviPgpLibImpl
             }
         }
 
-        public void ExportPublicKeys(IEnumerable<UserIdentity> userIdentity, Stream outputStream, bool isArmored = false)
+        public void ExportPublicKeys(IEnumerable<UserIdentity> userIdentities, Stream outputStream, bool isArmored = false)
         {
-            var identities = userIdentity.Select(identity => new MailboxAddress(identity.Name, identity.Address)).ToList();
+            var identities = userIdentities.Select(identity => new MailboxAddress(identity.Name, identity.Address)).ToList();
             base.Export(identities, outputStream, isArmored);
         }
 
