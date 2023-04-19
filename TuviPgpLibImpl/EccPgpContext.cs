@@ -43,7 +43,8 @@ namespace TuviPgpLibImpl
     public abstract class EccPgpContext : ExternalStorageBasedPgpContext, IEllipticCurveCryptographyPgpContext
     {
         public const string BitcoinEllipticCurveName = "secp256k1";
-        private readonly DateTime KeyCreationTime = new DateTime(1970, 1, 1);
+        private readonly DateTime KeyCreationTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+        //private readonly DateTime KeyCreationTime = new DateTime(1970, 1, 1);
         public const long ExpirationTime = 0;
 
         enum KeyCreationReason : int
@@ -130,7 +131,8 @@ namespace TuviPgpLibImpl
 
             PrivateDerivationKey signAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, KeyCreationReason.Signature.ToString());
             AsymmetricCipherKeyPair signSubKeyPair = DeriveKeyPair(signAccountKey, keyIndex);
-            PgpKeyPair signPgpSubKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, signSubKeyPair, KeyCreationTime);
+            //PgpKeyPair signPgpSubKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, signSubKeyPair, KeyCreationTime);
+            PgpKeyPair signPgpSubKeyPair = CreateSubKey(PublicKeyAlgorithmTag.ECDsa, signSubKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator signSubpacketGenerator = CreateSubpacketGenerator(KeyType.SignatureKey, ExpirationTime);
 
             Debug.Assert(encAccountKey != signAccountKey);
@@ -154,9 +156,37 @@ namespace TuviPgpLibImpl
             keyRingGenerator.AddSubKey(
                 keyPair: signPgpSubKeyPair,
                 hashedPackets: signSubpacketGenerator.Generate(),
-                unhashedPackets: null);
+                unhashedPackets: null
+                //hashAlgorithm: HashAlgorithmTag.Sha1
+                );
 
             return keyRingGenerator;
+        }
+
+        private static PgpKeyPair CreateSubKey(PublicKeyAlgorithmTag algorithm, AsymmetricCipherKeyPair keyPair, DateTime time)
+        {
+            IBcpgKey bcpgKey = null;
+            if (keyPair.Public is ECPublicKeyParameters ecK)
+            {
+                if (algorithm == PublicKeyAlgorithmTag.ECDsa)
+                {
+                    bcpgKey = new ECDsaPublicBcpgKey(ecK.PublicKeyParamSet, ecK.Q);
+                }
+                else
+                {
+                    throw new PgpException("unknown EC algorithm");
+                }
+            }
+            else
+            {
+                throw new PgpException("unknown EC algorithm");
+            }
+
+            PublicKeyPacket publicPk = new PublicSubkeyPacket(algorithm, time, bcpgKey);
+
+            var pub = new PgpPublicKey(publicPk);
+            var priv = new PgpPrivateKey(pub.KeyId, pub.PublicKeyPacket, keyPair.Private);
+            return new PgpKeyPair(pub, priv);
         }
 
         private PgpSignatureSubpacketGenerator CreateSubpacketGenerator(KeyType type, long expirationTime)

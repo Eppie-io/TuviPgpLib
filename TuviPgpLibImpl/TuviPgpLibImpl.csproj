@@ -17,12 +17,9 @@
     <NoWarn>CA1014</NoWarn>
     <WarningLevel>9999</WarningLevel>
   </PropertyGroup>
-  
-  <ItemGroup>
-    <PackageReference Include="MimeKit" Version="3.6.1" />
-  </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\MimeKit\MimeKit\MimeKit.csproj" />
     <ProjectReference Include="..\gitmodules\TuviKeyDerivationLib\KeyDerivationLib\KeyDerivationLib.csproj" />
     <ProjectReference Include="..\TuviPgpLib\TuviPgpLib.csproj" />
   </ItemGroup>
