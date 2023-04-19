@@ -44,7 +44,6 @@ namespace TuviPgpLibImpl
     {
         public const string BitcoinEllipticCurveName = "secp256k1";
         private readonly DateTime KeyCreationTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-        //private readonly DateTime KeyCreationTime = new DateTime(1970, 1, 1);
         public const long ExpirationTime = 0;
 
         enum KeyCreationReason : int
