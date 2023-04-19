@@ -125,7 +125,7 @@ namespace TuviPgpLibImpl
 
             PrivateDerivationKey encAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, KeyCreationReason.Encryption.ToString());
             AsymmetricCipherKeyPair encSubKeyPair = DeriveKeyPair(encAccountKey, keyIndex);
-            PgpKeyPair encPgpSubKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDH, encSubKeyPair, KeyCreationTime);
+            PgpKeyPair encPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDH, encSubKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator encSubpacketGenerator = CreateSubpacketGenerator(KeyType.EncryptionKey, ExpirationTime);
 
             PrivateDerivationKey signAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, KeyCreationReason.Signature.ToString());
@@ -164,18 +164,23 @@ namespace TuviPgpLibImpl
             IBcpgKey bcpgKey;
             if (keyPair.Public is ECPublicKeyParameters ecK)
             {
-                if (algorithm == PublicKeyAlgorithmTag.ECDsa)
+                if (algorithm == PublicKeyAlgorithmTag.ECDH)
+                {
+                    bcpgKey = new ECDHPublicBcpgKey(ecK.PublicKeyParamSet, ecK.Q, HashAlgorithmTag.Sha256,
+                        SymmetricKeyAlgorithmTag.Aes128);
+                }
+                else if(algorithm == PublicKeyAlgorithmTag.ECDsa)
                 {
                     bcpgKey = new ECDsaPublicBcpgKey(ecK.PublicKeyParamSet, ecK.Q);
                 }
                 else
                 {
-                    throw new PgpException("unknown EC algorithm");
+                    throw new PgpException("unsupported EC algorithm");
                 }
             }
             else
             {
-                throw new PgpException("unknown EC algorithm");
+                throw new PgpException("unsupported algorithm");
             }
 
             PublicKeyPacket publicPk = new PublicSubkeyPacket(algorithm, time, bcpgKey);
