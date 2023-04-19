@@ -19,7 +19,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\MimeKit\MimeKit\MimeKit.csproj" />
+    <PackageReference Include="MimeKit" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\gitmodules\TuviKeyDerivationLib\KeyDerivationLib\KeyDerivationLib.csproj" />
     <ProjectReference Include="..\TuviPgpLib\TuviPgpLib.csproj" />
   </ItemGroup>

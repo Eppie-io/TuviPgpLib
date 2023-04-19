@@ -31,7 +31,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\MimeKit\MimeKit\MimeKit.csproj" />
     <ProjectReference Include="..\gitmodules\TuviKeyDerivationLib\KeyDerivationInterface\KeyDerivation.csproj" />
     <ProjectReference Include="..\gitmodules\TuviKeyDerivationLib\KeyDerivationLib\KeyDerivationLib.csproj" />
     <ProjectReference Include="..\TuviPgpLibImpl\TuviPgpLibImpl.csproj" />
