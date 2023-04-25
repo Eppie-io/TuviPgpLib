@@ -17,9 +17,9 @@
     <NoWarn>CA1014</NoWarn>
     <WarningLevel>9999</WarningLevel>
   </PropertyGroup>
-  
+
   <ItemGroup>
-    <PackageReference Include="MimeKit" Version="3.6.1" />
+    <PackageReference Include="MimeKit" Version="4.0.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -43,7 +43,7 @@ namespace TuviPgpLibImpl
     public abstract class EccPgpContext : ExternalStorageBasedPgpContext, IEllipticCurveCryptographyPgpContext
     {
         public const string BitcoinEllipticCurveName = "secp256k1";
-        private readonly DateTime KeyCreationTime = new DateTime(1970, 1, 1);
+        private readonly DateTime KeyCreationTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
         public const long ExpirationTime = 0;
 
         enum KeyCreationReason : int
@@ -125,12 +125,12 @@ namespace TuviPgpLibImpl
 
             PrivateDerivationKey encAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, KeyCreationReason.Encryption.ToString());
             AsymmetricCipherKeyPair encSubKeyPair = DeriveKeyPair(encAccountKey, keyIndex);
-            PgpKeyPair encPgpSubKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDH, encSubKeyPair, KeyCreationTime);
+            PgpKeyPair encPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDH, encSubKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator encSubpacketGenerator = CreateSubpacketGenerator(KeyType.EncryptionKey, ExpirationTime);
 
             PrivateDerivationKey signAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, KeyCreationReason.Signature.ToString());
             AsymmetricCipherKeyPair signSubKeyPair = DeriveKeyPair(signAccountKey, keyIndex);
-            PgpKeyPair signPgpSubKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, signSubKeyPair, KeyCreationTime);
+            PgpKeyPair signPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDsa, signSubKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator signSubpacketGenerator = CreateSubpacketGenerator(KeyType.SignatureKey, ExpirationTime);
 
             Debug.Assert(encAccountKey != signAccountKey);
@@ -157,6 +157,37 @@ namespace TuviPgpLibImpl
                 unhashedPackets: null);
 
             return keyRingGenerator;
+        }
+
+        private static PgpKeyPair CreatePgpSubkey(PublicKeyAlgorithmTag algorithm, AsymmetricCipherKeyPair keyPair, DateTime time)
+        {
+            IBcpgKey bcpgKey;
+            if (keyPair.Public is ECPublicKeyParameters ecK)
+            {
+                if (algorithm == PublicKeyAlgorithmTag.ECDH)
+                {
+                    bcpgKey = new ECDHPublicBcpgKey(ecK.PublicKeyParamSet, ecK.Q, HashAlgorithmTag.Sha256,
+                        SymmetricKeyAlgorithmTag.Aes128);
+                }
+                else if(algorithm == PublicKeyAlgorithmTag.ECDsa)
+                {
+                    bcpgKey = new ECDsaPublicBcpgKey(ecK.PublicKeyParamSet, ecK.Q);
+                }
+                else
+                {
+                    throw new PgpException("unsupported EC algorithm");
+                }
+            }
+            else
+            {
+                throw new PgpException("unsupported algorithm");
+            }
+
+            PublicKeyPacket publicPk = new PublicSubkeyPacket(algorithm, time, bcpgKey);
+
+            var pub = new PgpPublicKey(publicPk);
+            var priv = new PgpPrivateKey(pub.KeyId, pub.PublicKeyPacket, keyPair.Private);
+            return new PgpKeyPair(pub, priv);
         }
 
         private PgpSignatureSubpacketGenerator CreateSubpacketGenerator(KeyType type, long expirationTime)
