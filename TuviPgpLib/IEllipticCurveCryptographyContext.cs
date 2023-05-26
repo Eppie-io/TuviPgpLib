@@ -29,5 +29,13 @@ namespace TuviPgpLib
         /// ECC keys will be derived from <paramref name="masterKey"/> for specified <paramref name="userIdentity"/>.
         /// </summary>
         void DeriveKeyPair(MasterKey masterKey, string userIdentity);
+
+        /// <summary>
+        /// Adds new keys to the PGP key ring
+        /// </summary>
+        /// <param name="masterKey">Master key</param>
+        /// <param name="userIdentity">User identity, it's used to search keys in the ring</param>
+        /// <param name="tag">Tag, which is used for deterministic key generation</param>
+        void DeriveKeyPair(MasterKey masterKey, string userIdentity, string tag);
     }
 }
