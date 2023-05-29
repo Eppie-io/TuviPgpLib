@@ -206,13 +206,13 @@ namespace TuviPgpLibImpl
 
             PrivateDerivationKey accountKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, tag);
             AsymmetricCipherKeyPair masterKeyPair = DeriveKeyPair(accountKey, keyIndex);
-            PgpKeyPair pgpMasterKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
+            PgpKeyPair pgpMasterKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator certificationSubpacketGenerator = CreateSubpacketGenerator(KeyType.MasterKey, ExpirationTime);
 
             PgpKeyPair encPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDH, masterKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator encSubpacketGenerator = CreateSubpacketGenerator(KeyType.EncryptionKey, ExpirationTime);
 
-            PgpKeyPair signPgpSubKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
+            PgpKeyPair signPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator signSubpacketGenerator = CreateSubpacketGenerator(KeyType.SignatureKey, ExpirationTime);
 
             PgpKeyRingGenerator keyRingGenerator = new PgpKeyRingGenerator(
@@ -249,7 +249,7 @@ namespace TuviPgpLibImpl
                     bcpgKey = new ECDHPublicBcpgKey(ecK.PublicKeyParamSet, ecK.Q, HashAlgorithmTag.Sha256,
                         SymmetricKeyAlgorithmTag.Aes128);
                 }
-                else if(algorithm == PublicKeyAlgorithmTag.ECDsa)
+                else if (algorithm == PublicKeyAlgorithmTag.ECDsa)
                 {
                     bcpgKey = new ECDsaPublicBcpgKey(ecK.PublicKeyParamSet, ecK.Q);
                 }
