@@ -122,7 +122,7 @@ namespace TuviPgpLibImpl
                 throw new ArgumentNullException(nameof(tag), "Parameter is not set.");
             }
 
-            var generator = CreateEllipticCurveKeyRingGeneratorTheSameSubkeys(masterKey, userIdentity, tag);
+            var generator = CreateEllipticCurveKeyRingGeneratorForDec(masterKey, userIdentity, tag);
 
             Import(generator.GenerateSecretKeyRing());
             Import(generator.GeneratePublicKeyRing());
@@ -199,13 +199,16 @@ namespace TuviPgpLibImpl
             return keyRingGenerator;
         }
 
-        private PgpKeyRingGenerator CreateEllipticCurveKeyRingGeneratorTheSameSubkeys(MasterKey masterKey, string userIdentity, string tag)
+        private PgpKeyRingGenerator CreateEllipticCurveKeyRingGeneratorForDec(MasterKey masterKey, string userIdentity, string tag)
         {
             int keyIndex = 0;
             string password = string.Empty;
 
+            // HACK, we want to preserve old addresses
             PrivateDerivationKey accountKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, tag);
-            AsymmetricCipherKeyPair masterKeyPair = DeriveKeyPair(accountKey, keyIndex);
+            PrivateDerivationKey decAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, KeyCreationReason.Encryption.ToString());
+            AsymmetricCipherKeyPair masterKeyPair = DeriveKeyPair(decAccountKey, keyIndex);
+
             PgpKeyPair pgpMasterKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator certificationSubpacketGenerator = CreateSubpacketGenerator(KeyType.MasterKey, ExpirationTime);
 
