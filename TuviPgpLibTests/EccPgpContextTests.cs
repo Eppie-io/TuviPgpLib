@@ -187,5 +187,46 @@ namespace TuviPgpLibTests
                 Assert.That(signature.Verify(), Is.True);
             }
         }
+
+        [Test]
+        public async Task KeyDerivationNullParametersThrowArgumentNullExceptionAsync()
+        {
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            Assert.Throws<ArgumentNullException>(
+                () => ctx.DeriveKeyPair(null, TestData.GetAccount().GetPgpIdentity()));
+            Assert.Throws<ArgumentNullException>(
+                () => ctx.DeriveKeyPair(TestData.MasterKey, null));
+        }
+
+        [Test]
+        public async Task EссCanSignNullParameterThrowArgumentNullExceptionAsync()
+        {
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+            Assert.That(ctx.CanSign(TestData.GetAccount().GetMailbox()), Is.True);
+            Assert.Throws<ArgumentNullException>(
+               () => ctx.CanSign(null));
+        }
+
+        [Test]
+        public async Task EссGetSigningKeyAsync()
+        {
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+            Assert.That(ctx.GetSigningKey(TestData.GetAccount().GetMailbox()), Is.Not.Null);
+        }
+
+        [Test]
+        public async Task EссCanSignWrongParameterThrowExceptionsAsync()
+        {
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            Assert.Throws<PrivateKeyNotFoundException>(
+               () => ctx.GetSigningKey(TestData.GetAccount().GetMailbox()));
+            Assert.Throws<ArgumentNullException>(
+               () => ctx.GetSigningKey(null));
+            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+            Assert.Throws<ArgumentNullException>(
+               () => ctx.GetSigningKey(null));
+        }
     }
 }
