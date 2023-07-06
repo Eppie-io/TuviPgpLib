@@ -14,10 +14,20 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
+using KeyDerivationLib;
 using MimeKit.Cryptography;
+using Org.BouncyCastle.Asn1.X9;
+using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Bcpg;
 using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Security;
 using System.Globalization;
+using NBitcoin;
+using Org.BouncyCastle.Math.EC.Multiplier;
+using Org.BouncyCastle.Math.EC;
+using Org.BouncyCastle.Math;
+using Org.BouncyCastle.Crypto;
+using static Org.BouncyCastle.Asn1.Cmp.Challenge;
 
 namespace TuviPgpLibTests
 {
@@ -227,6 +237,146 @@ namespace TuviPgpLibTests
             ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
             Assert.Throws<ArgumentNullException>(
                () => ctx.GetSigningKey(null));
+        }
+
+
+
+
+        [Test]
+        public async Task EthereumTest()
+        {
+            byte[] data = new byte[] { 196, 247, 123, 74, 159, 90, 13, 179, 167, 255, 195, 89, 158, 97, 
+                190, 249, 134, 3, 122, 233, 167, 204, 25, 114, 161, 13, 85, 192, 48, 39, 0, 32 };
+
+
+            //byte[] pubKey = new byte[] { 4, 20, 172, 190, 90, 6, 198, 130, 16, 252, 187, 119, 118, 63, 
+            //    150, 18, 228, 90, 82, 105, 144, 174, 182, 157, 105, 45, 112, 95, 39, 111, 85, 138, 90, 
+            //    230, 130, 104, 233, 56, 155, 176, 153, 237, 90, 200, 77, 141, 104, 97, 17, 15, 99, 100, 
+            //    79, 110, 91, 68, 126, 63, 134, 180, 186, 181, 222, 224, 17 };
+            
+            
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            ctx.DeriveEthereumKeyPair(data, TestData.GetAccount().GetPgpIdentity());
+
+            using Stream inputData = new MemoryStream();
+            using Stream encryptedData = new MemoryStream();
+            using var messageBody = new TextPart() { Text = TestData.TextContent };
+            messageBody.WriteTo(inputData);
+            inputData.Position = 0;
+
+            var encryptedMime = ctx.Encrypt(new List<MailboxAddress> { TestData.GetAccount().GetMailbox() }, inputData);
+
+            encryptedMime.WriteTo(encryptedData);
+            encryptedData.Position = 0;
+
+            var mime = ctx.Decrypt(encryptedData);
+            var decryptedBody = mime as TextPart;
+            Assert.That(
+                TestData.TextContent.SequenceEqual(decryptedBody?.Text ?? string.Empty), Is.True,
+                "Decrypted content is corrupted");
+        }
+
+        [Test]
+        public async Task EthereumTest2()
+        {
+            byte[] data = new byte[] { 196, 247, 123, 74, 159, 90, 13, 179, 167, 255, 195, 89, 158, 97,
+                190, 249, 134, 3, 122, 233, 167, 204, 25, 114, 161, 13, 85, 192, 48, 39, 0, 32 };
+
+            byte[] pubKey = new byte[] { 4, 20, 172, 190, 90, 6, 198, 130, 16, 252, 187, 119, 118, 63,
+                150, 18, 228, 90, 82, 105, 144, 174, 182, 157, 105, 45, 112, 95, 39, 111, 85, 138, 90,
+                230, 130, 104, 233, 56, 155, 176, 153, 237, 90, 200, 77, 141, 104, 97, 17, 15, 99, 100,
+                79, 110, 91, 68, 126, 63, 134, 180, 186, 181, 222, 224, 17 };
+
+            var key1 = CreatePrivateKey(data, PublicKeyAlgorithmTag.ECDH);
+            var key2 = CreatePublicKey(pubKey, PublicKeyAlgorithmTag.ECDH);
+            
+            var key3 = CreatePrivateKey(data, PublicKeyAlgorithmTag.ECDsa);
+            var key4 = CreatePublicKey(pubKey, PublicKeyAlgorithmTag.ECDsa);
+
+            //IList<PgpSecretKey> keys = new List<PgpSecretKey>();
+
+            //keys.Add(new PgpSecretKey(certificationLevel: 1,
+            //    new PgpKeyPair(key4, key3), TestData.GetAccount().GetPgpIdentity(),
+            //    SymmetricKeyAlgorithmTag.Aes128, Array.Empty<byte>(), false, null, null, new SecureRandom()));
+            
+            //keys.Add(new PgpSecretKey((keyPair.PrivateKey, new PgpPublicKey(keyPair.PublicKey, null, subSigs), encAlgorithm,
+            //        rawPassPhrase, false, useSha1, rand, false));
+            //new PgpSecretKeyRing()
+
+            //var pgpkeyring = new PgpSecretKeyRing()
+
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            
+            //context doesn't encrypt becouse couldn't find the key (it's not connected with email)
+            //using Stream keyStream = new MemoryStream();
+            //key2.Encode(keyStream);
+            //keyStream.Position = 0;
+            //var ring = new PgpPublicKeyRing(keyStream);
+            //ctx.Import(ring);
+
+            using Stream inputData = new MemoryStream();
+            using Stream encryptedData = new MemoryStream();
+            using var messageBody = new TextPart() { Text = TestData.TextContent };
+            messageBody.WriteTo(inputData);
+            inputData.Position = 0;
+
+            //var encryptedMime = ctx.Encrypt(new List<MailboxAddress> { TestData.GetAccount().GetMailbox() }, inputData);
+            var encryptedMime = ctx.Encrypt(new List<PgpPublicKey> { key2 }, inputData);
+
+            encryptedMime.WriteTo(encryptedData);
+            encryptedData.Position = 0;
+
+            ctx.DeriveEthereumKeyPair(data, TestData.GetAccount().GetPgpIdentity());
+
+            var mime = ctx.Decrypt(encryptedData);
+            var decryptedBody = mime as TextPart;
+            Assert.That(
+                TestData.TextContent.SequenceEqual(decryptedBody?.Text ?? string.Empty), Is.True,
+                "Decrypted content is corrupted");
+        }
+
+        public const string BitcoinEllipticCurveName = "secp256k1";
+        private readonly DateTime KeyCreationTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+        public const long ExpirationTime = 0;
+
+
+        private PgpPrivateKey CreatePrivateKey(byte[] data, PublicKeyAlgorithmTag algoTag)
+        {
+            const string algorithm = "EC";
+
+            // curveOid - Curve object identifier
+            DerObjectIdentifier curveOid = ECNamedCurveTable.GetOid(BitcoinEllipticCurveName);
+            ECKeyGenerationParameters keyParams = new ECKeyGenerationParameters(curveOid, new SecureRandom());
+
+            ECPrivateKeyParameters privateKey = new ECPrivateKeyParameters(algorithm, new BigInteger(1, data), keyParams.PublicKeyParamSet);
+            ECMultiplier multiplier = new FixedPointCombMultiplier();
+            ECPoint q = multiplier.Multiply(keyParams.DomainParameters.G, privateKey.D);
+            ECPublicKeyParameters publicKey = new ECPublicKeyParameters(algorithm, q, keyParams.PublicKeyParamSet);
+
+            PgpKeyPair pgpKeyPair = new PgpKeyPair(algoTag, new AsymmetricCipherKeyPair(publicKey, privateKey), KeyCreationTime);
+            //var key = new PgpPrivateKey()
+            return pgpKeyPair.PrivateKey;
+        }
+
+        private PgpPublicKey CreatePublicKey(byte[] data, PublicKeyAlgorithmTag algoTag)
+        {
+            const string algorithm = "EC";
+
+            //byte[] childKey = DerivationKeyFactory.DerivePrivateChildKey(derivationKey, keyIndex);
+
+            // curveOid - Curve object identifier
+            DerObjectIdentifier curveOid = ECNamedCurveTable.GetOid(BitcoinEllipticCurveName);
+            ECKeyGenerationParameters keyParams = new ECKeyGenerationParameters(curveOid, new SecureRandom());
+
+            //ECPrivateKeyParameters privateKey = new ECPrivateKeyParameters(algorithm, new BigInteger(1, key), keyParams.PublicKeyParamSet);
+
+            ECPoint q = keyParams.DomainParameters.Curve.DecodePoint(data);
+
+
+            //ECMultiplier multiplier = new FixedPointCombMultiplier();
+            //ECPoint q = multiplier.Multiply(keyParams.DomainParameters.G, privateKey.D);
+            ECPublicKeyParameters publicKey = new ECPublicKeyParameters(algorithm, q, keyParams.PublicKeyParamSet);
+            return new PgpPublicKey(algoTag, publicKey, KeyCreationTime);
         }
     }
 }

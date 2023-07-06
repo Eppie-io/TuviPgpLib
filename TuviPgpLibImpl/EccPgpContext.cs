@@ -34,6 +34,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using TuviPgpLib;
+using TuviPgpLib.Entities;
 
 namespace TuviPgpLibImpl
 {
@@ -128,6 +129,18 @@ namespace TuviPgpLibImpl
             Import(generator.GeneratePublicKeyRing());
         }
 
+        public void DeriveEthereumKeyPair(byte[] key, string userIdentity)
+        {
+            if (key == null)
+            {
+                throw new ArgumentNullException(nameof(key), "Parameter is not set.");
+            }
+            var generator = CreateEthereumGeneraton(key, userIdentity);
+
+            Import(generator.GenerateSecretKeyRing());
+            Import(generator.GeneratePublicKeyRing());
+        }
+
         /// <summary>
         /// Creates child keypair from choosen derivationKey with specific keyIndex.
         /// </summary>
@@ -145,6 +158,25 @@ namespace TuviPgpLibImpl
             ECKeyGenerationParameters keyParams = new ECKeyGenerationParameters(curveOid, new SecureRandom());
 
             ECPrivateKeyParameters privateKey = new ECPrivateKeyParameters(algorithm, new BigInteger(1, childKey), keyParams.PublicKeyParamSet);
+
+            ECMultiplier multiplier = new FixedPointCombMultiplier();
+            ECPoint q = multiplier.Multiply(keyParams.DomainParameters.G, privateKey.D);
+            ECPublicKeyParameters publicKey = new ECPublicKeyParameters(algorithm, q, keyParams.PublicKeyParamSet);
+
+            return new AsymmetricCipherKeyPair(publicKey, privateKey);
+        }
+
+        private static AsymmetricCipherKeyPair DeriveEthereumKeyPair(byte[] key)
+        {
+            const string algorithm = "EC";
+
+            //byte[] childKey = DerivationKeyFactory.DerivePrivateChildKey(derivationKey, keyIndex);
+
+            // curveOid - Curve object identifier
+            DerObjectIdentifier curveOid = ECNamedCurveTable.GetOid(BitcoinEllipticCurveName);
+            ECKeyGenerationParameters keyParams = new ECKeyGenerationParameters(curveOid, new SecureRandom());
+
+            ECPrivateKeyParameters privateKey = new ECPrivateKeyParameters(algorithm, new BigInteger(1, key), keyParams.PublicKeyParamSet);
 
             ECMultiplier multiplier = new FixedPointCombMultiplier();
             ECPoint q = multiplier.Multiply(keyParams.DomainParameters.G, privateKey.D);
@@ -208,6 +240,49 @@ namespace TuviPgpLibImpl
             PrivateDerivationKey accountKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, tag);
             PrivateDerivationKey decAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, KeyCreationReason.Encryption.ToString());
             AsymmetricCipherKeyPair masterKeyPair = DeriveKeyPair(decAccountKey, keyIndex);
+
+            PgpKeyPair pgpMasterKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
+            PgpSignatureSubpacketGenerator certificationSubpacketGenerator = CreateSubpacketGenerator(KeyType.MasterKey, ExpirationTime);
+
+            PgpKeyPair encPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDH, masterKeyPair, KeyCreationTime);
+            PgpSignatureSubpacketGenerator encSubpacketGenerator = CreateSubpacketGenerator(KeyType.EncryptionKey, ExpirationTime);
+
+            PgpKeyPair signPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
+            PgpSignatureSubpacketGenerator signSubpacketGenerator = CreateSubpacketGenerator(KeyType.SignatureKey, ExpirationTime);
+
+            PgpKeyRingGenerator keyRingGenerator = new PgpKeyRingGenerator(
+                certificationLevel: PgpSignature.PositiveCertification,
+                masterKey: pgpMasterKeyPair,
+                id: userIdentity,
+                encAlgorithm: SymmetricKeyAlgorithmTag.Aes128,
+                rawPassPhrase: Encoding.UTF8.GetBytes(password),
+                useSha1: true,
+                hashedPackets: certificationSubpacketGenerator.Generate(),
+                unhashedPackets: null,
+                rand: new SecureRandom());
+
+            keyRingGenerator.AddSubKey(
+                keyPair: encPgpSubKeyPair,
+                hashedPackets: encSubpacketGenerator.Generate(),
+                unhashedPackets: null);
+
+            keyRingGenerator.AddSubKey(
+                keyPair: signPgpSubKeyPair,
+                hashedPackets: signSubpacketGenerator.Generate(),
+                unhashedPackets: null);
+
+            return keyRingGenerator;
+        }
+
+        private PgpKeyRingGenerator CreateEthereumGeneraton(byte[] key, string userIdentity)
+        {
+            //int keyIndex = 0;
+            string password = string.Empty;
+
+            // HACK, we want to preserve old addresses
+            //PrivateDerivationKey accountKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, tag);
+            //PrivateDerivationKey decAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, KeyCreationReason.Encryption.ToString());
+            AsymmetricCipherKeyPair masterKeyPair = DeriveEthereumKeyPair(key);
 
             PgpKeyPair pgpMasterKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator certificationSubpacketGenerator = CreateSubpacketGenerator(KeyType.MasterKey, ExpirationTime);
