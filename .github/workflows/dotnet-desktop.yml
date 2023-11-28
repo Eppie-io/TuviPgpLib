@@ -1,65 +1,47 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
-# This workflow will build, test, sign and package a WPF or Windows Forms desktop application
-# built on .NET Core.
-# To learn how to migrate your existing application to .NET Core,
-# refer to https://docs.microsoft.com/en-us/dotnet/desktop-wpf/migration/convert-project-from-net-framework
-
-name: .NET Core Desktop
+name: Build and Test
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
+      - develop
+      - release/**
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
+      - develop
+      - release/**
+
+env:
+  project: TuviPgpLib.sln
+  test-project: TuviPgpLib.sln
+  dotnet-version: 8.x
 
 jobs:
-
   build:
-
     strategy:
       matrix:
         configuration: [Debug, Release]
-
-    runs-on: windows-latest  # For a list of available runner types, refer to
-                             # https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idruns-on
-
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     env:
-      Solution_Name: TuviPgpLibImpl/TuviPgpLibImpl.csproj
-      Test_Project_Path: TuviPgpLibImpl/TuviPgpLibImpl.csproj
- 
+      configuration: ${{ matrix.configuration }}
+
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
       with:
         fetch-depth: 0
         submodules: recursive
 
-    # Install the .NET Core workload
-    - name: Install .NET Core
-      uses: actions/setup-dotnet@v2
+    - name: Setup dotnet
+      uses: actions/setup-dotnet@3447fd6a9f9e57506b15f895c5b76d3b197dc7c2 # v3.2.0
       with:
-        dotnet-version: 7.0.x
+        dotnet-version: ${{ env.dotnet-version }}
 
-    # Add  MSBuild to the PATH: https://github.com/microsoft/setup-msbuild
-    - name: Setup MSBuild.exe
-      uses: microsoft/setup-msbuild@v1
-
-    # Restore the application to populate the obj folder with RuntimeIdentifiers
-    - name: Restore the application
-      run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
-      env:
-        Configuration: ${{ matrix.configuration }}
+    - name: Build
+      run: dotnet build ${{ env.project }} --configuration ${{ env.configuration }}
         
-    # Build the application 
-    - name: Build the application
-      run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration
-      env:
-        Configuration: ${{ matrix.configuration }}
-        
-    ## Execute all unit tests in the solution
-    #- name: Execute unit tests
-    #  run: dotnet test $env:Solution_Name
+    - name: Test
+      if: env.test-project != ''
+      run: dotnet test ${{ env.test-project }} --configuration ${{ env.configuration }}
