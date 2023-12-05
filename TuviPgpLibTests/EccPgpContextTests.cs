@@ -130,9 +130,9 @@ namespace TuviPgpLibTests
         public async Task EссCanSignAsync()
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            Assert.IsFalse(ctx.CanSign(TestData.GetAccount().GetMailbox()));
+            Assert.That(ctx.CanSign(TestData.GetAccount().GetMailbox()), Is.False);
             ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
-            Assert.IsTrue(ctx.CanSign(TestData.GetAccount().GetMailbox()));
+            Assert.That(ctx.CanSign(TestData.GetAccount().GetMailbox()), Is.True);
         }
 
         [Test]

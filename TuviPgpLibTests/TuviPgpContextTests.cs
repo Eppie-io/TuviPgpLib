@@ -54,8 +54,8 @@ namespace TuviPgpLibTests
                 ctx.ExportPublicKeys(identities, publicKeyData, isArmored);
                 ctx.ExportSecretKeys(TestData.GetAccount().GetPgpIdentity(), secretKeyData, isArmored);
 
-                Assert.Greater(publicKeyData.Length, 0, "Exported public key is empty");
-                Assert.Greater(secretKeyData.Length, 0, "Exported secret key is empty");
+                Assert.That(publicKeyData.Length, Is.GreaterThan(0), "Exported public key is empty");
+                Assert.That(secretKeyData.Length, Is.GreaterThan(0), "Exported secret key is empty");
             }
 
             publicKeyData.Position = 0;
@@ -84,10 +84,10 @@ namespace TuviPgpLibTests
                 Assert.That(ctx.GetPublicKeysInfo().Count, Is.EqualTo(3));
 
                 Assert.DoesNotThrowAsync(() => ctx.ExportPublicKeyRingAsync(publicKeyId, publicKeyArmored, default));
-                Assert.Greater(publicKeyArmored.Length, 0, "Exported public key is empty");
+                Assert.That(publicKeyArmored.Length, Is.GreaterThan(0), "Exported public key is empty");
 
                 ctx.ExportSecretKeys(TestData.GetAccount().GetPgpIdentity(), secretKeyData, true);
-                Assert.Greater(secretKeyData.Length, 0, "Exported secret key is empty");
+                Assert.That(secretKeyData.Length, Is.GreaterThan(0), "Exported secret key is empty");
             }
 
             publicKeyArmored.Position = 0;
@@ -126,8 +126,9 @@ namespace TuviPgpLibTests
             var mime = ctx.Decrypt(encryptedMimeData);
             var decryptedBody = mime as TextPart;
 
-            Assert.IsTrue(
+            Assert.That(
                 TestData.TextContent.SequenceEqual(decryptedBody?.Text ?? string.Empty),
+                Is.True,
                 "Data decrypted with imported key is corrupted");
         }
 
@@ -138,7 +139,7 @@ namespace TuviPgpLibTests
             ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
             bool isKeyExist = ctx.IsSecretKeyExist(TestData.GetAccount().GetUserIdentity());
 
-            Assert.IsTrue(isKeyExist, "Secret key has to exist");
+            Assert.That(isKeyExist, Is.True, "Secret key has to exist");
         }
 
         [Test]
@@ -148,7 +149,7 @@ namespace TuviPgpLibTests
             ctx.DeriveKeyPair(TestData.MasterKey, TestData.WrongPgpIdentity);
             bool isKeyExist = ctx.IsSecretKeyExist(TestData.GetAccount().GetUserIdentity());
 
-            Assert.IsFalse(isKeyExist, "Secret key has not to exist");
+            Assert.That(isKeyExist, Is.False, "Secret key has not to exist");
         }
 
         [Test]
