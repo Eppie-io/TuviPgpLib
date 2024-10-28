@@ -60,7 +60,7 @@ bool isValid = pgpContext.VerifySignature(signedMessage, senderEmail);
 
 
 ## Requirements
-- .NET 5.0+
+- .NET Standard 2.0
 - BouncyCastle for cryptographic operations
 
 ## Installation
