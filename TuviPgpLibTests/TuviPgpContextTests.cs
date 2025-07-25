@@ -50,7 +50,7 @@ namespace TuviPgpLibTests
             {
                 var identities = new List<UserIdentity> { TestData.GetAccount().GetUserIdentity() };
 
-                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
                 ctx.ExportPublicKeys(identities, publicKeyData, isArmored);
                 ctx.ExportSecretKeys(TestData.GetAccount().GetPgpIdentity(), secretKeyData, isArmored);
 
@@ -76,11 +76,11 @@ namespace TuviPgpLibTests
             using Stream secretKeyData = new MemoryStream();
             using (TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false))
             {
-                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
                 var publicKeyId = ctx.GetPublicKeysInfo().First().KeyId;
 
-                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetSecondAccount().GetPgpIdentity());
-                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetThirdAccount().GetPgpIdentity());
+                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetSecondAccount().GetPgpIdentity(), TestData.GetSecondAccount().GetPgpIdentity());
+                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetThirdAccount().GetPgpIdentity(), TestData.GetThirdAccount().GetPgpIdentity());
                 Assert.That(ctx.GetPublicKeysInfo().Count, Is.EqualTo(3));
 
                 Assert.DoesNotThrowAsync(() => ctx.ExportPublicKeyRingAsync(publicKeyId, publicKeyArmored, default));
@@ -136,7 +136,7 @@ namespace TuviPgpLibTests
         public async Task SecretKeyExistAsync()
         {
             using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
             bool isKeyExist = ctx.IsSecretKeyExist(TestData.GetAccount().GetUserIdentity());
 
             Assert.That(isKeyExist, Is.True, "Secret key has to exist");
@@ -146,7 +146,7 @@ namespace TuviPgpLibTests
         public async Task SecretKeyNotExistAsync()
         {
             using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.WrongPgpIdentity);
+            ctx.DeriveKeyPair(TestData.MasterKey, TestData.WrongPgpIdentity, TestData.WrongPgpIdentity);
             bool isKeyExist = ctx.IsSecretKeyExist(TestData.GetAccount().GetUserIdentity());
 
             Assert.That(isKeyExist, Is.False, "Secret key has not to exist");
@@ -157,7 +157,7 @@ namespace TuviPgpLibTests
         {
             using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
 
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
             var keysInfo = ctx.GetPublicKeysInfo(); 
 
             Assert.That(keysInfo.Count, Is.EqualTo(1));
@@ -173,7 +173,7 @@ namespace TuviPgpLibTests
         {
             using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
             UserIdentity? nullIdentity = null;
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
             Assert.Throws<ArgumentNullException>(() => ctx.IsSecretKeyExist(nullIdentity));
         }
 
