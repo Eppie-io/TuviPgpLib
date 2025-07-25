@@ -1,5 +1,5 @@
 ﻿///////////////////////////////////////////////////////////////////////////////
-//   Copyright 2023 Eppie (https://eppie.io)
+//   Copyright 2025 Eppie (https://eppie.io)
 //
 //   Licensed under the Apache License, Version 2.0(the "License");
 //   you may not use this file except in compliance with the License.
@@ -25,17 +25,13 @@ namespace TuviPgpLib
     public interface IEllipticCurveCryptographyPgpContext
     {
         /// <summary>
-        /// Create new PGP keyring.
-        /// ECC keys will be derived from <paramref name="masterKey"/> for specified <paramref name="userIdentity"/>.
+        /// Derives a PGP key pair from the master key and tag, associating it with the user identity.
+        /// Generates ECC keys (secp256k1) and imports them into the PGP key ring.
         /// </summary>
-        void DeriveKeyPair(MasterKey masterKey, string userIdentity);
-
-        /// <summary>
-        /// Adds new keys to the PGP key ring
-        /// </summary>
-        /// <param name="masterKey">Master key</param>
-        /// <param name="userIdentity">User identity, it's used to search keys in the ring</param>
-        /// <param name="tag">Tag, which is used for deterministic key generation</param>
+        /// <param name="masterKey">The master key for key derivation.</param>
+        /// <param name="userIdentity">The user identity (e.g., email) associated with the PGP key ring.</param>
+        /// <param name="tag">The tag for deterministic key derivation.</param>
+        /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
         void DeriveKeyPair(MasterKey masterKey, string userIdentity, string tag);
     }
 }
