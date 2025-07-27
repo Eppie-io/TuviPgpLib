@@ -106,7 +106,7 @@ namespace TuviPgpLibImpl
 
         /// <summary>
         /// Derives a PGP key pair using BIP44 hierarchical deterministic key derivation and associates it with the user identity.
-        /// Generates ECC keys (secp256k1) for a master key and subkeys (encryption and signing) using the path m/44'/3630'/account'/channel/index.
+        /// Generates ECC keys (secp256k1) for a master key and subkeys (encryption and signing) using the path m/44'/coin'/account'/channel/index.
         /// Imports the keys into the PGP key ring.
         /// </summary>
         /// <param name="masterKey">The master key for BIP44 derivation.</param>
@@ -155,20 +155,122 @@ namespace TuviPgpLibImpl
         }
 
         /// <summary>
+        /// Generates an elliptic curve (EC) public key using BIP-44 hierarchical deterministic key derivation.
+        /// </summary>
+        /// <param name="masterKey">The master key used as the root for key derivation. Must not be null.</param>
+        /// <param name="coin">The hardened coin type index as per SLIP-44. Must be non-negative.</param>
+        /// <param name="account">The hardened account index for derivation. Must be non-negative.</param>
+        /// <param name="channel">The non-hardened channel index (e.g., 10 for mail). Must be non-negative.</param>
+        /// <param name="index">The non-hardened address index for derivation. Must be non-negative.</param>
+        /// <returns>An <see cref="ECPublicKeyParameters"/> object representing the derived public key on the secp256k1 curve.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="masterKey"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when the derived private key is invalid (e.g., zero or incorrect length).</exception>
+        /// <remarks>
+        /// This method follows the BIP-44 derivation path: <c>m/44'/coin'/account'/channel/index</c>.
+        /// The resulting key is suitable for use in elliptic curve cryptography operations, such as ECDH or ECDsa.
+        /// </remarks>
+        public static ECPublicKeyParameters GenerateEccPublicKey(MasterKey masterKey, int coin, int account, int channel, int index)
+        {
+            if (masterKey == null)
+            {
+                throw new ArgumentNullException(nameof(masterKey));
+            }
+
+            if (coin < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(coin), "Coin index must be non-negative.");
+            }
+
+            if (account < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(account), "Account index must be non-negative.");
+            }
+
+            if (channel < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(channel), "Channel index must be non-negative.");
+            }
+
+            if (index < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index), "Address index must be non-negative.");
+            }
+
+            var childKey = DerivationKeyFactory.CreatePrivateDerivationKeyBip44(masterKey, coin, account, channel, index);
+            
+            return GenerateEccPublicKey(childKey);
+        }
+
+        /// <summary>
+        /// Generates an elliptic curve (EC) public key using a tag-based key derivation scheme.
+        /// </summary>
+        /// <param name="masterKey">The master key used as the root for key derivation. Must not be null.</param>
+        /// <param name="keyTag">The string tag used to customize the key derivation process. Must not be null.</param>
+        /// <returns>An <see cref="ECPublicKeyParameters"/> object representing the derived public key on the secp256k1 curve.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="masterKey"/> or <paramref name="keyTag"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when the derived private key is invalid (e.g., zero or incorrect length).</exception>
+        /// <remarks>
+        /// This method derives a private key using the provided <paramref name="keyTag"/>, followed by an encryption-specific tag
+        /// and a child key index of 0. The resulting key is suitable for use in elliptic curve cryptography operations, such as ECDH.
+        /// </remarks>
+        public static ECPublicKeyParameters GenerateEccPublicKey(MasterKey masterKey, string keyTag)
+        {
+            if (masterKey == null)
+            {
+                throw new ArgumentNullException(nameof(masterKey));
+            }
+
+            if (string.IsNullOrEmpty(keyTag))
+            {
+                throw new ArgumentException(nameof(keyTag));
+            }
+
+            var accountKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, keyTag);
+            var encAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, EncryptionTag);
+            var childKey = DerivationKeyFactory.DerivePrivateChildKey(encAccountKey, 0);
+
+            return GenerateEccPublicKey(childKey);
+        }
+
+        /// <summary>
+        /// Generates an elliptic curve (EC) public key from a private derivation key.
+        /// </summary>
+        /// <param name="derivationKey">The private derivation key used to generate the key pair. Must not be null.</param>
+        /// <returns>An <see cref="ECPublicKeyParameters"/> object representing the derived public key on the secp256k1 curve.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="derivationKey"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when the private key scalar is invalid (e.g., zero or incorrect length).</exception>
+        /// <remarks>
+        /// This method generates an EC key pair from the provided <paramref name="derivationKey"/> and extracts the public key.
+        /// The resulting key is suitable for use in elliptic curve cryptography operations, such as ECDH or ECDsa.
+        /// </remarks>
+        public static ECPublicKeyParameters GenerateEccPublicKey(PrivateDerivationKey derivationKey)
+        {
+            var keyPair = GenerateEccKeyPairFromPrivateKey(derivationKey);
+            var publicKeyPar = keyPair.Public as ECPublicKeyParameters;
+
+            return publicKeyPar;
+        }
+
+        /// <summary>
         /// Creates child keypair from choosen derivationKey.
         /// </summary>
         /// <param name="derivationKey">Derivation key.</param>
         /// <returns>Created key pair.</returns>
-        public static AsymmetricCipherKeyPair GenerateEccKeyPairFromPrivateKey(PrivateDerivationKey derivationKey)
+        private static AsymmetricCipherKeyPair GenerateEccKeyPairFromPrivateKey(PrivateDerivationKey derivationKey)
         {
-            const string algorithm = "EC";
+            if (derivationKey == null)
+            {
+                throw new ArgumentNullException(nameof(derivationKey));
+            }
 
-            byte[] privateKeyBytes = derivationKey.Scalar;
-
-            if (privateKeyBytes == null || privateKeyBytes.Length != 32 || privateKeyBytes.All(b => b == 0))
+            if (derivationKey.Scalar == null || derivationKey.Scalar.Length != 32 || derivationKey.Scalar.All(b => b == 0))
             {
                 throw new ArgumentException("Invalid private key scalar.", nameof(derivationKey));
             }
+
+            const string algorithm = "EC";
+
+            byte[] privateKeyBytes = derivationKey.Scalar;
 
             // curveOid - Curve object identifier
             DerObjectIdentifier curveOid = ECNamedCurveTable.GetOid(BitcoinEllipticCurveName);
