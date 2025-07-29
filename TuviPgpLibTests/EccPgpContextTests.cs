@@ -49,7 +49,7 @@ namespace TuviPgpLibTests
         public async Task EссEncryptAndDecryptAsync()
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
 
             using Stream inputData = new MemoryStream();
             using Stream encryptedData = new MemoryStream();
@@ -75,7 +75,7 @@ namespace TuviPgpLibTests
             using Stream encryptedData = new MemoryStream();
             using (EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false))
             {
-                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
+                ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
 
                 using Stream inputData = new MemoryStream();
                 using var messageBody = new TextPart() { Text = TestData.TextContent };
@@ -87,7 +87,7 @@ namespace TuviPgpLibTests
 
             using (EccPgpContext anotherCtx = await InitializeEccPgpContextAsync().ConfigureAwait(false))
             {
-                anotherCtx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
+                anotherCtx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
 
                 encryptedData.Position = 0;
                 var mime = anotherCtx.Decrypt(encryptedData);
@@ -104,7 +104,7 @@ namespace TuviPgpLibTests
             string ToHex(byte[] data) => string.Concat(data.Select(x => x.ToString("x2", CultureInfo.CurrentCulture)));
 
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
 
             var allPublicKeys = ctx.EnumerateSecretKeys().ToList();
             Assert.That(allPublicKeys.Count, Is.EqualTo(3));
@@ -132,7 +132,7 @@ namespace TuviPgpLibTests
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
             Assert.That(ctx.CanSign(TestData.GetAccount().GetMailbox()), Is.False);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
             Assert.That(ctx.CanSign(TestData.GetAccount().GetMailbox()), Is.True);
         }
 
@@ -140,7 +140,7 @@ namespace TuviPgpLibTests
         public async Task EссSignAsync()
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
 
             using Stream inputData = new MemoryStream();
             using Stream encryptedData = new MemoryStream();
@@ -164,7 +164,7 @@ namespace TuviPgpLibTests
         public async Task EссEncryptAndSignAsync()
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
 
             using Stream inputData = new MemoryStream();
             using Stream encryptedData = new MemoryStream();
@@ -194,16 +194,16 @@ namespace TuviPgpLibTests
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
             Assert.Throws<ArgumentNullException>(
-                () => ctx.DeriveKeyPair(null, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity()));
+                () => ctx.GeneratePgpKeysByTagOld(null, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity()));
             Assert.Throws<ArgumentNullException>(
-                () => ctx.DeriveKeyPair(TestData.MasterKey, null, null));
+                () => ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, null, null));
         }
 
         [Test]
         public async Task EссCanSignNullParameterThrowArgumentNullExceptionAsync()
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
             Assert.That(ctx.CanSign(TestData.GetAccount().GetMailbox()), Is.True);
             Assert.Throws<ArgumentNullException>(
                () => ctx.CanSign(null));
@@ -213,7 +213,7 @@ namespace TuviPgpLibTests
         public async Task EссGetSigningKeyAsync()
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
             Assert.That(ctx.GetSigningKey(TestData.GetAccount().GetMailbox()), Is.Not.Null);
         }
 
@@ -225,7 +225,7 @@ namespace TuviPgpLibTests
                () => ctx.GetSigningKey(TestData.GetAccount().GetMailbox()));
             Assert.Throws<ArgumentNullException>(
                () => ctx.GetSigningKey(null));
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
             Assert.Throws<ArgumentNullException>(
                () => ctx.GetSigningKey(null));
         }

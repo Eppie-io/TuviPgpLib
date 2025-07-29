@@ -25,16 +25,6 @@ namespace TuviPgpLib
     public interface IEllipticCurveCryptographyPgpContext
     {
         /// <summary>
-        /// Derives a PGP key pair from the master key and tag, associating it with the user identity.
-        /// Generates ECC keys (secp256k1) and imports them into the PGP key ring.
-        /// </summary>
-        /// <param name="masterKey">The master key for key derivation.</param>
-        /// <param name="userIdentity">The user identity (e.g., email) associated with the PGP key ring.</param>
-        /// <param name="tag">The tag for deterministic key derivation.</param>
-        /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
-        void DeriveKeyPair(MasterKey masterKey, string userIdentity, string tag);
-
-        /// <summary>
         /// Derives a PGP key pair based on the provided master key and tag, associating it with the specified user identity.
         /// Generates a master key and subkeys for encryption and signing using elliptic curve cryptography (ECC) on the secp256k1 curve.
         /// The generated keys are imported into the current context.
@@ -68,5 +58,16 @@ namespace TuviPgpLib
         /// Keys are generated using the secp256k1 elliptic curve.
         /// </remarks>
         void GeneratePgpKeysByBip44(MasterKey masterKey, string userIdentity, int coin, int account, int channel, int index);
+
+
+        /// <summary>
+        /// Derives a PGP key pair from the master key and tag, associating it with the user identity.
+        /// Generates ECC keys (secp256k1) and imports them into the PGP key ring.
+        /// </summary>
+        /// <param name="masterKey">The master key for key derivation.</param>
+        /// <param name="userIdentity">The user identity (e.g., email) associated with the PGP key ring.</param>
+        /// <param name="tag">The tag for deterministic key derivation.</param>
+        /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
+        void GeneratePgpKeysByTagOld(MasterKey masterKey, string userIdentity, string tag);
     }
 }

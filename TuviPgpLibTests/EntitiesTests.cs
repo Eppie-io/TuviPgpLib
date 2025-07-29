@@ -45,7 +45,7 @@ namespace TuviPgpLibTests
         {
             using (TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false))
             {
-                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
+                ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
                 var publicKeyInfo = ctx.GetPublicKeysInfo().First();
                 Assert.That(publicKeyInfo.Algorithm, Is.EqualTo("ECDsa"));
                 Assert.That(publicKeyInfo.BitStrength, Is.EqualTo(256));

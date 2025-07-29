@@ -69,88 +69,6 @@ namespace TuviPgpLibImpl
         }
 
         /// <summary>
-        /// Return signing (not master) key of choosen mailbox
-        /// </summary>
-        /// <param name="mailbox">Mailbox.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Signing key.</returns>
-        public override PgpSecretKey GetSigningKey(MailboxAddress mailbox, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            if (mailbox == null)
-            {
-                throw new ArgumentNullException(nameof(mailbox));
-            }
-
-            foreach (PgpSecretKeyRing item in EnumerateSecretKeyRings(mailbox))
-            {
-                foreach (PgpSecretKey secretKey in item.GetSecretKeys())
-                {
-                    if (IsSigningNotMaster(secretKey))
-                    {
-                        return secretKey;
-                    }
-                }
-            }
-
-            throw new PrivateKeyNotFoundException(mailbox, "The private key could not be found.");
-        }
-
-        public override bool CanSign(MailboxAddress signer, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            if (signer == null)
-            {
-                throw new ArgumentNullException(nameof(signer));
-            }
-
-            foreach (PgpSecretKey item in EnumerateSecretKeys(signer))
-            {
-                if (IsSigningNotMaster(item))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Derives a PGP key pair based on the provided master key and tag, associating it with the specified user identity.
-        /// Generates a master key and subkeys for encryption and signing using elliptic curve cryptography (ECC) on the secp256k1 curve.
-        /// The generated keys are imported into the current context.
-        /// </summary>
-        /// <param name="masterKey">The master key used for key derivation. Must not be null.</param>
-        /// <param name="userIdentity">The user identity (e.g., email address) associated with the keys in the PGP key ring. Not used in key derivation. Must not be null.</param>
-        /// <param name="tag">The string tag used to customize key derivation. Must not be null.</param>
-        /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
-        /// <remarks>
-        /// This method employs a tag-based key derivation scheme to create unique keys: a master key, an encryption subkey, and a signing subkey.
-        /// The <paramref name="userIdentity"/> parameter is used solely to set the identity in the PGP key ring and does not affect key derivation.
-        /// Keys are generated using the secp256k1 elliptic curve.
-        /// </remarks>
-        public void DeriveKeyPair(MasterKey masterKey, string userIdentity, string tag)
-        {
-            if (masterKey == null)
-            {
-                throw new ArgumentNullException(nameof(masterKey), "Parameter is not set.");
-            }
-
-            if (userIdentity == null)
-            {
-                throw new ArgumentNullException(nameof(userIdentity), "Parameter is not set.");
-            }
-
-            if (tag == null)
-            {
-                throw new ArgumentNullException(nameof(tag), "Parameter is not set.");
-            }
-
-            var generator = CreateEllipticCurveKeyRingGenerator(masterKey, userIdentity, tag);
-
-            Import(generator.GenerateSecretKeyRing());
-            Import(generator.GeneratePublicKeyRing());
-        }
-
-        /// <summary>
         /// Derives a PGP key pair based on the provided master key and tag, associating it with the specified user identity.
         /// Generates a master key and subkeys for encryption and signing using elliptic curve cryptography (ECC) on the secp256k1 curve.
         /// The generated keys are imported into the current context.
@@ -235,6 +153,89 @@ namespace TuviPgpLibImpl
 
             Import(generator.GenerateSecretKeyRing());
             Import(generator.GeneratePublicKeyRing());
+        }
+
+
+        /// <summary>
+        /// Derives a PGP key pair based on the provided master key and tag, associating it with the specified user identity.
+        /// Generates a master key and subkeys for encryption and signing using elliptic curve cryptography (ECC) on the secp256k1 curve.
+        /// The generated keys are imported into the current context.
+        /// </summary>
+        /// <param name="masterKey">The master key used for key derivation. Must not be null.</param>
+        /// <param name="userIdentity">The user identity (e.g., email address) associated with the keys in the PGP key ring. Not used in key derivation. Must not be null.</param>
+        /// <param name="tag">The string tag used to customize key derivation. Must not be null.</param>
+        /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
+        /// <remarks>
+        /// This method employs a tag-based key derivation scheme to create unique keys: a master key, an encryption subkey, and a signing subkey.
+        /// The <paramref name="userIdentity"/> parameter is used solely to set the identity in the PGP key ring and does not affect key derivation.
+        /// Keys are generated using the secp256k1 elliptic curve.
+        /// </remarks>
+        public void GeneratePgpKeysByTagOld(MasterKey masterKey, string userIdentity, string tag)
+        {
+            if (masterKey == null)
+            {
+                throw new ArgumentNullException(nameof(masterKey), "Parameter is not set.");
+            }
+
+            if (userIdentity == null)
+            {
+                throw new ArgumentNullException(nameof(userIdentity), "Parameter is not set.");
+            }
+
+            if (tag == null)
+            {
+                throw new ArgumentNullException(nameof(tag), "Parameter is not set.");
+            }
+
+            var generator = CreateEllipticCurveKeyRingGenerator(masterKey, userIdentity, tag);
+
+            Import(generator.GenerateSecretKeyRing());
+            Import(generator.GeneratePublicKeyRing());
+        }
+
+        /// <summary>
+        /// Return signing (not master) key of choosen mailbox
+        /// </summary>
+        /// <param name="mailbox">Mailbox.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Signing key.</returns>
+        public override PgpSecretKey GetSigningKey(MailboxAddress mailbox, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            if (mailbox == null)
+            {
+                throw new ArgumentNullException(nameof(mailbox));
+            }
+
+            foreach (PgpSecretKeyRing item in EnumerateSecretKeyRings(mailbox))
+            {
+                foreach (PgpSecretKey secretKey in item.GetSecretKeys())
+                {
+                    if (IsSigningNotMaster(secretKey))
+                    {
+                        return secretKey;
+                    }
+                }
+            }
+
+            throw new PrivateKeyNotFoundException(mailbox, "The private key could not be found.");
+        }
+
+        public override bool CanSign(MailboxAddress signer, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            if (signer == null)
+            {
+                throw new ArgumentNullException(nameof(signer));
+            }
+
+            foreach (PgpSecretKey item in EnumerateSecretKeys(signer))
+            {
+                if (IsSigningNotMaster(item))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
