@@ -93,6 +93,26 @@ namespace TuviPgpLibImpl
             return CanSign(new MimeKit.MailboxAddress(userIdentity.Name, userIdentity.Address));
         }
 
+        public void RemoveKeys(string userIdentity)
+        {
+            if (string.IsNullOrEmpty(userIdentity))
+            {
+                throw new ArgumentNullException(nameof(userIdentity), "User identity cannot be null or empty.");
+            }
+
+            var secretKeyRings = SecretKeyRingBundle.GetKeyRings(userIdentity);
+            foreach (var keyRing in secretKeyRings)
+            {
+                Delete(keyRing);
+            }
+
+            var publicKeyRings = PublicKeyRingBundle.GetKeyRings(userIdentity);
+            foreach (var keyRing in publicKeyRings)
+            {
+                Delete(keyRing);
+            }
+        }
+
         public void ExportSecretKeys(string userIdentity, Stream outputStream, bool isArmored = false)
         {
             if (outputStream == null)

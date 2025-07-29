@@ -78,5 +78,11 @@ namespace TuviPgpLib
         /// Checks if there are any secret key for specified <paramref name="userIdentity"/>.
         /// </summary>
         bool IsSecretKeyExist(UserIdentity userIdentity);
+
+        /// <summary>
+        /// Remove all keys associated with the specified user identity.
+        /// </summary>
+        /// <param name="userIdentity">Identity of the user whose keys should be removed.</param>
+        void RemoveKeys(string userIdentity);
     }
 }
