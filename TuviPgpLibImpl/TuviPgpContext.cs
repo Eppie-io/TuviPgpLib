@@ -100,14 +100,14 @@ namespace TuviPgpLibImpl
                 throw new ArgumentNullException(nameof(userIdentity), "User identity cannot be null or empty.");
             }
 
-            var secretKeyRings = SecretKeyRingBundle.GetKeyRings(userIdentity);
-            foreach (var keyRing in secretKeyRings)
+            var secretKeyRingsToRemove = SecretKeyRingBundle.GetKeyRings(userIdentity).ToList();
+            foreach (var keyRing in secretKeyRingsToRemove)
             {
                 Delete(keyRing);
             }
 
-            var publicKeyRings = PublicKeyRingBundle.GetKeyRings(userIdentity);
-            foreach (var keyRing in publicKeyRings)
+            var publicKeyRingsToRemove = PublicKeyRingBundle.GetKeyRings(userIdentity).ToList();
+            foreach (var keyRing in publicKeyRingsToRemove)
             {
                 Delete(keyRing);
             }
