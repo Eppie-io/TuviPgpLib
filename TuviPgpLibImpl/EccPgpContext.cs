@@ -314,19 +314,35 @@ namespace TuviPgpLibImpl
         }
 
         /// <summary>
-        /// Creates a PGP public key ring from elliptic curve cryptography parameters, associating it with a user identity.
+        /// Creates a PGP public key ring containing a master key and two subkeys (for encryption and signing)
+        /// using elliptic curve cryptography parameters, associating them with a user identity.
         /// </summary>
-        /// <param name="publicKey">The elliptic curve public key parameters. Must not be null.</param>
-        /// <param name="algorithm">The public key algorithm. Only <see cref="PublicKeyAlgorithmTag.ECDH"/> and <see cref="PublicKeyAlgorithmTag.ECDsa"/> is supported.</param>
-        /// <param name="userIdentity">The user identity (e.g., email address) to associate with the key. Must not be null or empty.</param>
-        /// <returns>A <see cref="PgpPublicKeyRing"/> object containing the public key with the specified user identity.</returns>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="publicKey"/> or <paramref name="userIdentity"/> is null.</exception>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="algorithm"/> is not <see cref="PublicKeyAlgorithmTag.ECDH"/> or <see cref="PublicKeyAlgorithmTag.ECDsa"/> or when <paramref name="userIdentity"/> is empty.</exception>
-        public static PgpPublicKeyRing CreatePgpPublicKeyRing(ECPublicKeyParameters publicKey, PublicKeyAlgorithmTag algorithm, string userIdentity)
+        /// <param name="masterPublicKey">The elliptic curve public key parameters for the master key (ECDsa). Must not be null.</param>
+        /// <param name="encryptionPublicKey">The elliptic curve public key parameters for the encryption subkey (ECDH). Must not be null.</param>
+        /// <param name="signingPublicKey">The elliptic curve public key parameters for the signing subkey (ECDsa). Must not be null.</param>
+        /// <param name="userIdentity">The user identity (e.g., email address) to associate with the keys. Must not be null or empty.</param>
+        /// <returns>A <see cref="PgpPublicKeyRing"/> object containing the master key, encryption subkey, and signing subkey.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when any of the public key parameters or <paramref name="userIdentity"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="userIdentity"/> is empty.</exception>
+        public static PgpPublicKeyRing CreatePgpPublicKeyRing(
+            ECPublicKeyParameters masterPublicKey,
+            ECPublicKeyParameters encryptionPublicKey,
+            ECPublicKeyParameters signingPublicKey,
+            string userIdentity)
         {
-            if (publicKey == null)
+            if (masterPublicKey == null)
             {
-                throw new ArgumentNullException(nameof(publicKey));
+                throw new ArgumentNullException(nameof(masterPublicKey));
+            }
+
+            if (encryptionPublicKey == null)
+            {
+                throw new ArgumentNullException(nameof(encryptionPublicKey));
+            }
+
+            if (signingPublicKey == null)
+            {
+                throw new ArgumentNullException(nameof(signingPublicKey));
             }
 
             if (string.IsNullOrEmpty(userIdentity))
@@ -334,42 +350,60 @@ namespace TuviPgpLibImpl
                 throw new ArgumentException("User identity must not be null or empty.", nameof(userIdentity));
             }
 
-            if (algorithm != PublicKeyAlgorithmTag.ECDH && algorithm != PublicKeyAlgorithmTag.ECDsa)
-            {
-                throw new ArgumentException("Only ECDH and ECDsa algorithms are supported", nameof(algorithm));
-            }
-
-            IBcpgKey bcpgKey;
-            if (algorithm == PublicKeyAlgorithmTag.ECDH)
-            {
-                bcpgKey = new ECDHPublicBcpgKey(
-                    oid: publicKey.PublicKeyParamSet,
-                    point: publicKey.Q,
-                    hashAlgorithm: DefaultHashAlgorithmTag,
-                    symmetricKeyAlgorithm: DefaultSymmetricKeyAlgorithmTag
-                );
-            }
-            else
-            {
-                bcpgKey = new ECDsaPublicBcpgKey(
-                    oid: publicKey.PublicKeyParamSet,
-                    point: publicKey.Q
-                );
-            }
-
-            var publicPk = new PublicKeyPacket(
-                algorithm: algorithm,
-                time: KeyCreationTime,
-                key: bcpgKey
-            );
-
             using (var memoryStream = new MemoryStream())
             {
-                publicPk.Encode(new BcpgOutputStream(memoryStream));
+                // Create master key (ECDsa)
+                var masterBcpgKey = new ECDsaPublicBcpgKey(
+                    oid: masterPublicKey.PublicKeyParamSet,
+                    point: masterPublicKey.Q
+                );
 
+                var masterPublicPk = new PublicKeyPacket(
+                    algorithm: PublicKeyAlgorithmTag.ECDsa,
+                    time: KeyCreationTime,
+                    key: masterBcpgKey
+                );
+
+                // Encode master key
+                masterPublicPk.Encode(new BcpgOutputStream(memoryStream));
+
+                // Add user identity
                 var userIdPacket = new UserIdPacket(userIdentity);
                 userIdPacket.Encode(new BcpgOutputStream(memoryStream));
 
+                // Create encryption subkey (ECDH)
+                var encryptionBcpgKey = new ECDHPublicBcpgKey(
+                    oid: encryptionPublicKey.PublicKeyParamSet,
+                    point: encryptionPublicKey.Q,
+                    hashAlgorithm: DefaultHashAlgorithmTag,
+                    symmetricKeyAlgorithm: DefaultSymmetricKeyAlgorithmTag
+                );
+
+                var encryptionPublicPk = new PublicSubkeyPacket(
+                    algorithm: PublicKeyAlgorithmTag.ECDH,
+                    time: KeyCreationTime,
+                    key: encryptionBcpgKey
+                );
+
+                // Encode encryption subkey
+                encryptionPublicPk.Encode(new BcpgOutputStream(memoryStream));
+
+                // Create signing subkey (ECDsa)
+                var signingBcpgKey = new ECDsaPublicBcpgKey(
+                    oid: signingPublicKey.PublicKeyParamSet,
+                    point: signingPublicKey.Q
+                );
+
+                var signingPublicPk = new PublicSubkeyPacket(
+                    algorithm: PublicKeyAlgorithmTag.ECDsa,
+                    time: KeyCreationTime,
+                    key: signingBcpgKey
+                );
+
+                // Encode signing subkey
+                signingPublicPk.Encode(new BcpgOutputStream(memoryStream));
+
+                // Reset stream position and create key ring
                 memoryStream.Position = 0;
                 return new PgpPublicKeyRing(memoryStream);
             }
