@@ -17,7 +17,9 @@
 using MimeKit.Cryptography;
 using Org.BouncyCastle.Asn1.X9;
 using Org.BouncyCastle.Bcpg;
+using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Security;
 using System.Globalization;
 
 namespace TuviPgpLibTests
@@ -358,7 +360,7 @@ namespace TuviPgpLibTests
             Assert.That(publicKeys.Count, Is.GreaterThanOrEqualTo(5));
             Assert.That(secretKeys.Count, Is.GreaterThanOrEqualTo(5));
         }
-    
+
         private const string ValidTag = "TestTag";
 
         [Test]
@@ -563,6 +565,117 @@ namespace TuviPgpLibTests
             Assert.Throws<ArgumentException>(
                 () => EccPgpContext.GenerateEccPublicKey(masterKey, keyTag),
                 "Empty keyTag should throw ArgumentException");
+        }
+
+
+        private const string BitcoinEllipticCurveName = "secp256k1";
+        
+        private static ECPublicKeyParameters CreateTestPublicKey()
+        {
+            // Create a test public key on the secp256k1 curve
+            var curveOid = ECNamedCurveTable.GetOid(BitcoinEllipticCurveName);
+            var keyParams = new ECKeyGenerationParameters(curveOid, new SecureRandom());
+            var generator = new ECKeyPairGenerator();
+            generator.Init(keyParams);
+            var keyPair = generator.GenerateKeyPair();
+            return (ECPublicKeyParameters)keyPair.Public;
+        }
+
+        [Test]
+        public void CreatePgpPublicKeyRingNullMasterKeyThrowsArgumentNullException()
+        {
+            // Arrange: Set up test data with null master key
+            var encryptionKey = CreateTestPublicKey();
+            var signingKey = CreateTestPublicKey();
+            string userIdentity = "user@example.com";
+
+            // Act & Assert: Verify that null master key throws exception
+            var ex = Assert.Throws<ArgumentNullException>(() =>
+                EccPgpContext.CreatePgpPublicKeyRing(null, encryptionKey, signingKey, userIdentity),
+                "Should throw ArgumentNullException for null master key.");
+            Assert.That(ex.ParamName, Is.EqualTo("masterPublicKey"), "Exception should indicate correct parameter name.");
+        }
+
+        [Test]
+        public void CreatePgpPublicKeyRingNullEncryptionKeyThrowsArgumentNullException()
+        {
+            // Arrange: Set up test data with null encryption key
+            var masterKey = CreateTestPublicKey();
+            var signingKey = CreateTestPublicKey();
+            string userIdentity = "user@example.com";
+
+            // Act & Assert: Verify that null encryption key throws exception
+            var ex = Assert.Throws<ArgumentNullException>(() =>
+                EccPgpContext.CreatePgpPublicKeyRing(masterKey, null, signingKey, userIdentity),
+                "Should throw ArgumentNullException for null encryption key.");
+            Assert.That(ex.ParamName, Is.EqualTo("encryptionPublicKey"), "Exception should indicate correct parameter name.");
+        }
+
+        [Test]
+        public void CreatePgpPublicKeyRingNullSigningKeyThrowsArgumentNullException()
+        {
+            // Arrange: Set up test data with null signing key
+            var masterKey = CreateTestPublicKey();
+            var encryptionKey = CreateTestPublicKey();
+            string userIdentity = "user@example.com";
+
+            // Act & Assert: Verify that null signing key throws exception
+            var ex = Assert.Throws<ArgumentNullException>(() =>
+                EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, null, userIdentity),
+                "Should throw ArgumentNullException for null signing key.");
+            Assert.That(ex.ParamName, Is.EqualTo("signingPublicKey"), "Exception should indicate correct parameter name.");
+        }
+
+        [Test]
+        public void CreatePgpPublicKeyRingNullUserIdentityThrowsArgumentException()
+        {
+            // Arrange: Set up test data with null user identity
+            var masterKey = CreateTestPublicKey();
+            var encryptionKey = CreateTestPublicKey();
+            var signingKey = CreateTestPublicKey();
+
+            // Act & Assert: Verify that null user identity throws exception
+            var ex = Assert.Throws<ArgumentException>(() =>
+                EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, signingKey, null),
+                "Should throw ArgumentException for null user identity.");
+            Assert.That(ex.Message, Does.Contain("User identity must not be null or empty."), "Exception message should indicate issue with user identity.");
+        }
+
+        [Test]
+        public void CreatePgpPublicKeyRingEmptyUserIdentityThrowsArgumentException()
+        {
+            // Arrange: Set up test data with empty user identity
+            var masterKey = CreateTestPublicKey();
+            var encryptionKey = CreateTestPublicKey();
+            var signingKey = CreateTestPublicKey();
+            string userIdentity = "";
+
+            // Act & Assert: Verify that empty user identity throws exception
+            var ex = Assert.Throws<ArgumentException>(() =>
+                EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, signingKey, userIdentity),
+                "Should throw ArgumentException for empty user identity.");
+            Assert.That(ex.Message, Does.Contain("User identity must not be null or empty."), "Exception message should indicate issue with user identity.");
+        }
+
+        [Test]
+        [TestCase("user@example.com")]
+        [TestCase("John Doe <user@example.com>")]
+        public void CreatePgpPublicKeyRingDifferentUserIdentityFormatsCreatesValidKeyRing(string userIdentity)
+        {
+            // Arrange: Set up test public keys
+            var masterKey = CreateTestPublicKey();
+            var encryptionKey = CreateTestPublicKey();
+            var signingKey = CreateTestPublicKey();
+
+            // Act: Create the public key ring with specified user identity
+            var keyRing = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, signingKey, userIdentity);
+
+            // Assert: Verify the key ring and user identity
+            Assert.That(keyRing, Is.Not.Null, $"Key ring should not be null for identity: {userIdentity}.");
+            var masterPublicKey = keyRing.GetPublicKey();
+            var userIds = masterPublicKey.GetUserIds().ToList();
+            Assert.That(userIds, Has.Count.EqualTo(1), $"Should have exactly one user ID for identity: {userIdentity}.");
+            Assert.That(userIds[0], Is.EqualTo(userIdentity), $"User ID should match provided identity: {userIdentity}.");
         }
     }
 }
