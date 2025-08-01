@@ -47,9 +47,7 @@ namespace TuviPgpLibImpl
 
         private static readonly DateTime KeyCreationTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
         private const long ExpirationTime = 0;
-        
-        private const EncryptionAlgorithm DefaultEncryptionAlgorithmTag = EncryptionAlgorithm.Aes256;
-        private const SymmetricKeyAlgorithmTag DefaultSymmetricKeyAlgorithmTag = SymmetricKeyAlgorithmTag.Aes256;
+        private const SymmetricKeyAlgorithmTag DefaultSymmetricKeyAlgorithmTag = SymmetricKeyAlgorithmTag.Aes128;
         private const HashAlgorithmTag DefaultHashAlgorithmTag = HashAlgorithmTag.Sha256;
 
         private const string SignatureTag = "Signature";
@@ -61,6 +59,8 @@ namespace TuviPgpLibImpl
             SignatureKey = 1,
             EncryptionKey = 2
         };
+
+        private const EncryptionAlgorithm DefaultEncryptionAlgorithmTag = EncryptionAlgorithm.Aes256;
 
         protected EccPgpContext(IKeyStorage storage)
             : base(storage)
