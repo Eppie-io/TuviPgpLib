@@ -660,6 +660,8 @@ namespace TuviPgpLibTests
         [Test]
         [TestCase("user@example.com")]
         [TestCase("John Doe <user@example.com>")]
+        [TestCase("test@eppie")]
+        [TestCase("agrutu67edu83skwcj4fkzd4n4xf2dadm9wwrzezh5s9t859sbier@eppie")]
         public void CreatePgpPublicKeyRingDifferentUserIdentityFormatsCreatesValidKeyRing(string userIdentity)
         {
             // Arrange: Set up test public keys
@@ -670,12 +672,29 @@ namespace TuviPgpLibTests
             // Act: Create the public key ring with specified user identity
             var keyRing = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, signingKey, userIdentity);
 
-            // Assert: Verify the key ring and user identity
+            // Assert: Key ring is not null
             Assert.That(keyRing, Is.Not.Null, $"Key ring should not be null for identity: {userIdentity}.");
+
+            // Assert: Master public key has correct user ID
             var masterPublicKey = keyRing.GetPublicKey();
             var userIds = masterPublicKey.GetUserIds().ToList();
             Assert.That(userIds, Has.Count.EqualTo(1), $"Should have exactly one user ID for identity: {userIdentity}.");
             Assert.That(userIds[0], Is.EqualTo(userIdentity), $"User ID should match provided identity: {userIdentity}.");
+
+            // Assert: There are exactly 3 public keys in the ring (1 master + 2 subkeys)
+            var allKeys = keyRing.GetPublicKeys().Cast<PgpPublicKey>().ToList();
+            Assert.That(allKeys, Has.Count.EqualTo(3), "Key ring should contain exactly 3 keys: 1 master and 2 subkeys.");
+
+            // Assert: Identify the subkeys and their algorithms
+            var subKeys = allKeys.Where(k => k.IsMasterKey == false).ToList();
+            Assert.That(subKeys, Has.Count.EqualTo(2), "Key ring should contain exactly 2 subkeys.");
+
+            // Check presence of both ECDH and ECDSA subkeys
+            bool hasEncryptionSubkey = subKeys.Any(k => k.Algorithm == PublicKeyAlgorithmTag.ECDH);
+            bool hasSigningSubkey = subKeys.Any(k => k.Algorithm == PublicKeyAlgorithmTag.ECDsa);
+
+            Assert.That(hasEncryptionSubkey, Is.True, "Encryption subkey (ECDH) is missing.");
+            Assert.That(hasSigningSubkey, Is.True, "Signing subkey (ECDSA) is missing.");
         }
     }
 }
