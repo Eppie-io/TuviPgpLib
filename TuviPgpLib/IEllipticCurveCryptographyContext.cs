@@ -34,9 +34,10 @@ namespace TuviPgpLib
         /// <param name="tag">The string tag used to customize key derivation. Must not be null.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
         /// <remarks>
-        /// This method employs a tag-based key derivation scheme to create unique keys: a master key, an encryption subkey, and a signing subkey.
-        /// The <paramref name="userIdentity"/> parameter is used solely to set the identity in the PGP key ring and does not affect key derivation.
-        /// Keys are generated using the secp256k1 elliptic curve.
+        /// This method deterministically derives a master key, along with an encryption subkey and a signing subkey, all from a single derivation key,
+        /// using a tag-based key derivation scheme. These three keys form a unified PGP key hierarchy.
+        /// The <paramref name="userIdentity"/> parameter is used solely to assign the identity in the PGP key ring and does not influence key derivation.
+        /// Key derivation is performed using the secp256k1 elliptic curve.
         /// </remarks>
         void GeneratePgpKeysByTag(MasterKey masterKey, string userIdentity, string tag);
 
@@ -53,21 +54,30 @@ namespace TuviPgpLib
         /// <param name="index">Non-hardened address index. Must be non-negative.</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="masterKey"/> or <paramref name="userIdentity"/> is null.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="account"/>, <paramref name="channel"/>, or <paramref name="index"/> is negative.</exception>
-        /// <remarks>
-        /// The derivation path follows BIP44: m/44'/coin'/account'/channel/index
-        /// Keys are generated using the secp256k1 elliptic curve.
+        // <remarks>
+        /// This method deterministically derives a master key, along with an encryption subkey and a signing subkey, all from a single derivation key,
+        /// using a BIP44 key derivation scheme. These three keys form a unified PGP key hierarchy.
+        /// The derivation path follows BIP44: m/44'/coin'/account'/channel/index. 
+        /// The <paramref name="userIdentity"/> parameter is used solely to assign the identity in the PGP key ring and does not influence key derivation.
+        /// Key derivation is performed using the secp256k1 elliptic curve.
         /// </remarks>
         void GeneratePgpKeysByBip44(MasterKey masterKey, string userIdentity, int coin, int account, int channel, int index);
 
 
         /// <summary>
-        /// Derives a PGP key pair from the master key and tag, associating it with the user identity.
-        /// Generates ECC keys (secp256k1) and imports them into the PGP key ring.
+        /// Derives a PGP key pair based on the provided master key and tag, associating it with the specified user identity.
+        /// Generates a master key and subkeys for encryption and signing using elliptic curve cryptography (ECC) on the secp256k1 curve.
+        /// The generated keys are imported into the current context.
         /// </summary>
-        /// <param name="masterKey">The master key for key derivation.</param>
-        /// <param name="userIdentity">The user identity (e.g., email) associated with the PGP key ring.</param>
-        /// <param name="tag">The tag for deterministic key derivation.</param>
+        /// <param name="masterKey">The master key used for key derivation. Must not be null.</param>
+        /// <param name="userIdentity">The user identity (e.g., email address) associated with the keys in the PGP key ring. Not used in key derivation. Must not be null.</param>
+        /// <param name="tag">The string tag used to customize key derivation. Must not be null.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
+        /// This method deterministically derives unique keys: a master key, along with an encryption subkey and a signing subkey,
+        /// using a tag-based key derivation scheme. These three keys form a unified PGP key hierarchy.
+        /// The <paramref name="userIdentity"/> parameter is used solely to assign the identity in the PGP key ring and does not influence key derivation.
+        /// Key derivation is performed using the secp256k1 elliptic curve.
+        /// </remarks>
         void GeneratePgpKeysByTagOld(MasterKey masterKey, string userIdentity, string tag);
     }
 }
