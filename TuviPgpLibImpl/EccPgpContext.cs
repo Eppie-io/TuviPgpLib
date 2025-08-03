@@ -50,14 +50,12 @@ namespace TuviPgpLibImpl
         private const SymmetricKeyAlgorithmTag DefaultSymmetricKeyAlgorithmTag = SymmetricKeyAlgorithmTag.Aes128;
         private const HashAlgorithmTag DefaultHashAlgorithmTag = HashAlgorithmTag.Sha256;
 
-        private const string SignatureTag = "Signature";
         private const string EncryptionTag = "Encryption";
         
         enum KeyType : uint
         {
             MasterKey = 0,
-            SignatureKey = 1,
-            EncryptionKey = 2
+            EncryptionKey = 1
         };
 
         private const EncryptionAlgorithm DefaultEncryptionAlgorithmTag = EncryptionAlgorithm.Aes256;
@@ -70,7 +68,7 @@ namespace TuviPgpLibImpl
 
         /// <summary>
         /// Derives a PGP key pair based on the provided master key and tag, associating it with the specified user identity.
-        /// Generates a master key and subkeys for encryption and signing using elliptic curve cryptography (ECC) on the secp256k1 curve.
+        /// Generates a master key and subkey for encryption using elliptic curve cryptography (ECC) on the secp256k1 curve.
         /// The generated keys are imported into the current context.
         /// </summary>
         /// <param name="masterKey">The master key used for key derivation. Must not be null.</param>
@@ -78,7 +76,7 @@ namespace TuviPgpLibImpl
         /// <param name="tag">The string tag used to customize key derivation. Must not be null.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
         /// <remarks>
-        /// This method deterministically derives a master key, along with an encryption subkey and a signing subkey, all from a single derivation key,
+        /// This method deterministically derives a master key, along with an encryption subkey, all from a single derivation key,
         /// using a tag-based key derivation scheme. These three keys form a unified PGP key hierarchy.
         /// The <paramref name="userIdentity"/> parameter is used solely to assign the identity in the PGP key ring and does not influence key derivation.
         /// Key derivation is performed using the secp256k1 elliptic curve.
@@ -108,7 +106,7 @@ namespace TuviPgpLibImpl
 
         /// <summary>
         /// Derives a PGP key pair using BIP44 hierarchical deterministic key derivation and associates it with the user identity.
-        /// Generates ECC keys (secp256k1) for a master key and subkeys (encryption and signing) using the path m/44'/coin'/account'/channel/index.
+        /// Generates ECC keys (secp256k1) for a master key and encryption subkey using the path m/44'/coin'/account'/channel/index.
         /// Imports the keys into the PGP key ring.
         /// </summary>
         /// <param name="masterKey">The master key for BIP44 derivation.</param>
@@ -120,7 +118,7 @@ namespace TuviPgpLibImpl
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="masterKey"/> or <paramref name="userIdentity"/> is null.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="account"/>, <paramref name="channel"/>, or <paramref name="index"/> is negative.</exception>
         // <remarks>
-        /// This method deterministically derives a master key, along with an encryption subkey and a signing subkey, all from a single derivation key,
+        /// This method deterministically derives a master key, along with an encryption subkey, all from a single derivation key,
         /// using a BIP44 key derivation scheme. These three keys form a unified PGP key hierarchy.
         /// The derivation path follows BIP44: m/44'/coin'/account'/channel/index. 
         /// The <paramref name="userIdentity"/> parameter is used solely to assign the identity in the PGP key ring and does not influence key derivation.
@@ -162,14 +160,14 @@ namespace TuviPgpLibImpl
 
         /// <summary>
         /// Derives a PGP key pair based on the provided master key and tag, associating it with the specified user identity.
-        /// Generates a master key and subkeys for encryption and signing using elliptic curve cryptography (ECC) on the secp256k1 curve.
+        /// Generates a master key and encryption subkey using elliptic curve cryptography (ECC) on the secp256k1 curve.
         /// The generated keys are imported into the current context.
         /// </summary>
         /// <param name="masterKey">The master key used for key derivation. Must not be null.</param>
         /// <param name="userIdentity">The user identity (e.g., email address) associated with the keys in the PGP key ring. Not used in key derivation. Must not be null.</param>
         /// <param name="tag">The string tag used to customize key derivation. Must not be null.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
-        /// This method deterministically derives unique keys: a master key, along with an encryption subkey and a signing subkey,
+        /// This method deterministically derives unique keys: a master key, along with an encryption subkey,
         /// using a tag-based key derivation scheme. These three keys form a unified PGP key hierarchy.
         /// The <paramref name="userIdentity"/> parameter is used solely to assign the identity in the PGP key ring and does not influence key derivation.
         /// Key derivation is performed using the secp256k1 elliptic curve.
@@ -195,51 +193,6 @@ namespace TuviPgpLibImpl
 
             Import(generator.GenerateSecretKeyRing());
             Import(generator.GeneratePublicKeyRing());
-        }
-
-        /// <summary>
-        /// Return signing (not master) key of choosen mailbox
-        /// </summary>
-        /// <param name="mailbox">Mailbox.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Signing key.</returns>
-        public override PgpSecretKey GetSigningKey(MailboxAddress mailbox, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            if (mailbox == null)
-            {
-                throw new ArgumentNullException(nameof(mailbox));
-            }
-
-            foreach (PgpSecretKeyRing item in EnumerateSecretKeyRings(mailbox))
-            {
-                foreach (PgpSecretKey secretKey in item.GetSecretKeys())
-                {
-                    if (IsSigningNotMaster(secretKey))
-                    {
-                        return secretKey;
-                    }
-                }
-            }
-
-            throw new PrivateKeyNotFoundException(mailbox, "The private key could not be found.");
-        }
-
-        public override bool CanSign(MailboxAddress signer, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            if (signer == null)
-            {
-                throw new ArgumentNullException(nameof(signer));
-            }
-
-            foreach (PgpSecretKey item in EnumerateSecretKeys(signer))
-            {
-                if (IsSigningNotMaster(item))
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
         /// <summary>
@@ -318,20 +271,18 @@ namespace TuviPgpLibImpl
         }
 
         /// <summary>
-        /// Creates a PGP public key ring containing a master key and two subkeys (for encryption and signing)
+        /// Creates a PGP public key ring containing a master key and encryption subkey
         /// using elliptic curve cryptography parameters, associating them with a user identity.
         /// </summary>
         /// <param name="masterPublicKey">The elliptic curve public key parameters for the master key (ECDsa). Must not be null.</param>
         /// <param name="encryptionPublicKey">The elliptic curve public key parameters for the encryption subkey (ECDH). Must not be null.</param>
-        /// <param name="signingPublicKey">The elliptic curve public key parameters for the signing subkey (ECDsa). Must not be null.</param>
         /// <param name="userIdentity">The user identity (e.g., email address) to associate with the keys. Must not be null or empty.</param>
-        /// <returns>A <see cref="PgpPublicKeyRing"/> object containing the master key, encryption subkey, and signing subkey.</returns>
+        /// <returns>A <see cref="PgpPublicKeyRing"/> object containing the master key and encryption subkey.</returns>
         /// <exception cref="ArgumentNullException">Thrown when any of the public key parameters or <paramref name="userIdentity"/> is null.</exception>
         /// <exception cref="ArgumentException">Thrown when <paramref name="userIdentity"/> is empty.</exception>
         public static PgpPublicKeyRing CreatePgpPublicKeyRing(
             ECPublicKeyParameters masterPublicKey,
             ECPublicKeyParameters encryptionPublicKey,
-            ECPublicKeyParameters signingPublicKey,
             string userIdentity)
         {
             if (masterPublicKey == null)
@@ -342,11 +293,6 @@ namespace TuviPgpLibImpl
             if (encryptionPublicKey == null)
             {
                 throw new ArgumentNullException(nameof(encryptionPublicKey));
-            }
-
-            if (signingPublicKey == null)
-            {
-                throw new ArgumentNullException(nameof(signingPublicKey));
             }
 
             if (string.IsNullOrEmpty(userIdentity))
@@ -391,21 +337,6 @@ namespace TuviPgpLibImpl
 
                 // Encode encryption subkey
                 encryptionPublicPk.Encode(new BcpgOutputStream(memoryStream));
-
-                // Create signing subkey (ECDsa)
-                var signingBcpgKey = new ECDsaPublicBcpgKey(
-                    oid: signingPublicKey.PublicKeyParamSet,
-                    point: signingPublicKey.Q
-                );
-
-                var signingPublicPk = new PublicSubkeyPacket(
-                    algorithm: PublicKeyAlgorithmTag.ECDsa,
-                    time: KeyCreationTime,
-                    key: signingBcpgKey
-                );
-
-                // Encode signing subkey
-                signingPublicPk.Encode(new BcpgOutputStream(memoryStream));
 
                 // Reset stream position and create key ring
                 memoryStream.Position = 0;
@@ -468,15 +399,7 @@ namespace TuviPgpLibImpl
             PgpKeyPair encPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDH, encSubKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator encSubpacketGenerator = CreateSubpacketGenerator(KeyType.EncryptionKey, ExpirationTime);
 
-            PrivateDerivationKey signAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, SignatureTag);
-            var childSignAccountKey = DerivationKeyFactory.DerivePrivateChildKey(signAccountKey, keyIndex);
-            AsymmetricCipherKeyPair signSubKeyPair = GenerateEccKeyPairFromPrivateKey(childSignAccountKey);
-            PgpKeyPair signPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDsa, signSubKeyPair, KeyCreationTime);
-            PgpSignatureSubpacketGenerator signSubpacketGenerator = CreateSubpacketGenerator(KeyType.SignatureKey, ExpirationTime);
-
-            Debug.Assert(encAccountKey != signAccountKey);
-
-            return CreatePgpKeyRingGenerator(userIdentity, password, pgpMasterKeyPair, certificationSubpacketGenerator, encPgpSubKeyPair, encSubpacketGenerator, signPgpSubKeyPair, signSubpacketGenerator);
+            return CreatePgpKeyRingGenerator(userIdentity, password, pgpMasterKeyPair, certificationSubpacketGenerator, encPgpSubKeyPair, encSubpacketGenerator);
         }
 
         private PgpKeyRingGenerator CreateEllipticCurveKeyRingGeneratorForTag(MasterKey masterKey, string userIdentity, string tag)
@@ -511,10 +434,7 @@ namespace TuviPgpLibImpl
             PgpKeyPair encPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDH, masterKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator encSubpacketGenerator = CreateSubpacketGenerator(KeyType.EncryptionKey, ExpirationTime);
 
-            PgpKeyPair signPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
-            PgpSignatureSubpacketGenerator signSubpacketGenerator = CreateSubpacketGenerator(KeyType.SignatureKey, ExpirationTime);
-
-            return CreatePgpKeyRingGenerator(userIdentity, password, pgpMasterKeyPair, certificationSubpacketGenerator, encPgpSubKeyPair, encSubpacketGenerator, signPgpSubKeyPair, signSubpacketGenerator);
+            return CreatePgpKeyRingGenerator(userIdentity, password, pgpMasterKeyPair, certificationSubpacketGenerator, encPgpSubKeyPair, encSubpacketGenerator);
         }
 
         private static PgpKeyRingGenerator CreatePgpKeyRingGenerator(
@@ -523,9 +443,7 @@ namespace TuviPgpLibImpl
             PgpKeyPair pgpMasterKeyPair, 
             PgpSignatureSubpacketGenerator certificationSubpacketGenerator, 
             PgpKeyPair encPgpSubKeyPair, 
-            PgpSignatureSubpacketGenerator encSubpacketGenerator, 
-            PgpKeyPair signPgpSubKeyPair, 
-            PgpSignatureSubpacketGenerator signSubpacketGenerator)
+            PgpSignatureSubpacketGenerator encSubpacketGenerator)
         {
             PgpKeyRingGenerator keyRingGenerator = new PgpKeyRingGenerator(
                 certificationLevel: PgpSignature.PositiveCertification,
@@ -541,11 +459,6 @@ namespace TuviPgpLibImpl
             keyRingGenerator.AddSubKey(
                 keyPair: encPgpSubKeyPair,
                 hashedPackets: encSubpacketGenerator.Generate(),
-                unhashedPackets: null);
-
-            keyRingGenerator.AddSubKey(
-                keyPair: signPgpSubKeyPair,
-                hashedPackets: signSubpacketGenerator.Generate(),
                 unhashedPackets: null);
 
             return keyRingGenerator;
@@ -589,10 +502,7 @@ namespace TuviPgpLibImpl
             switch (type)
             {
                 case KeyType.MasterKey:
-                    subpacketGenerator.SetKeyFlags(false, PgpKeyFlags.CanCertify);
-                    break;
-                case KeyType.SignatureKey:
-                    subpacketGenerator.SetKeyFlags(false, PgpKeyFlags.CanSign);
+                    subpacketGenerator.SetKeyFlags(false, PgpKeyFlags.CanCertify | PgpKeyFlags.CanSign);
                     break;
                 case KeyType.EncryptionKey:
                     subpacketGenerator.SetKeyFlags(false, PgpKeyFlags.CanEncryptCommunications | PgpKeyFlags.CanEncryptStorage);
@@ -611,20 +521,6 @@ namespace TuviPgpLibImpl
             subpacketGenerator.SetFeature(false, Org.BouncyCastle.Bcpg.Sig.Features.FEATURE_MODIFICATION_DETECTION);
 
             return subpacketGenerator;
-        }
-
-        private static bool IsSigningNotMaster(PgpSecretKey key)
-        {
-            if (key.IsSigningKey && !key.IsMasterKey)
-            {
-                PgpPublicKey publicKey = key.PublicKey;
-                if (!publicKey.IsRevoked() && !OpenPgpContext.IsExpired(publicKey))
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
     }
 }

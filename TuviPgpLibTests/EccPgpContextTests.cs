@@ -109,10 +109,8 @@ namespace TuviPgpLibTests
             ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
 
             var allPublicKeys = ctx.EnumerateSecretKeys().ToList();
-            Assert.That(allPublicKeys.Count, Is.EqualTo(3));
+            Assert.That(allPublicKeys.Count, Is.EqualTo(2));
             Assert.That(KeysEquals(allPublicKeys[0], allPublicKeys[1]), Is.False);
-            Assert.That(KeysEquals(allPublicKeys[0], allPublicKeys[2]), Is.False);
-            Assert.That(KeysEquals(allPublicKeys[1], allPublicKeys[2]), Is.False);
 
             var listOfKeys = ctx.GetPublicKeys(new List<MailboxAddress> { TestData.GetAccount().GetMailbox() });
             PgpPublicKey key = listOfKeys.First();
@@ -586,12 +584,11 @@ namespace TuviPgpLibTests
         {
             // Arrange: Set up test data with null master key
             var encryptionKey = CreateTestPublicKey();
-            var signingKey = CreateTestPublicKey();
             string userIdentity = "user@example.com";
 
             // Act & Assert: Verify that null master key throws exception
             var ex = Assert.Throws<ArgumentNullException>(() =>
-                EccPgpContext.CreatePgpPublicKeyRing(null, encryptionKey, signingKey, userIdentity),
+                EccPgpContext.CreatePgpPublicKeyRing(null, encryptionKey, userIdentity),
                 "Should throw ArgumentNullException for null master key.");
             Assert.That(ex.ParamName, Is.EqualTo("masterPublicKey"), "Exception should indicate correct parameter name.");
         }
@@ -601,29 +598,13 @@ namespace TuviPgpLibTests
         {
             // Arrange: Set up test data with null encryption key
             var masterKey = CreateTestPublicKey();
-            var signingKey = CreateTestPublicKey();
             string userIdentity = "user@example.com";
 
             // Act & Assert: Verify that null encryption key throws exception
             var ex = Assert.Throws<ArgumentNullException>(() =>
-                EccPgpContext.CreatePgpPublicKeyRing(masterKey, null, signingKey, userIdentity),
+                EccPgpContext.CreatePgpPublicKeyRing(masterKey, null, userIdentity),
                 "Should throw ArgumentNullException for null encryption key.");
             Assert.That(ex.ParamName, Is.EqualTo("encryptionPublicKey"), "Exception should indicate correct parameter name.");
-        }
-
-        [Test]
-        public void CreatePgpPublicKeyRingNullSigningKeyThrowsArgumentNullException()
-        {
-            // Arrange: Set up test data with null signing key
-            var masterKey = CreateTestPublicKey();
-            var encryptionKey = CreateTestPublicKey();
-            string userIdentity = "user@example.com";
-
-            // Act & Assert: Verify that null signing key throws exception
-            var ex = Assert.Throws<ArgumentNullException>(() =>
-                EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, null, userIdentity),
-                "Should throw ArgumentNullException for null signing key.");
-            Assert.That(ex.ParamName, Is.EqualTo("signingPublicKey"), "Exception should indicate correct parameter name.");
         }
 
         [Test]
@@ -632,11 +613,10 @@ namespace TuviPgpLibTests
             // Arrange: Set up test data with null user identity
             var masterKey = CreateTestPublicKey();
             var encryptionKey = CreateTestPublicKey();
-            var signingKey = CreateTestPublicKey();
 
             // Act & Assert: Verify that null user identity throws exception
             var ex = Assert.Throws<ArgumentException>(() =>
-                EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, signingKey, null),
+                EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, null),
                 "Should throw ArgumentException for null user identity.");
             Assert.That(ex.Message, Does.Contain("User identity must not be null or empty."), "Exception message should indicate issue with user identity.");
         }
@@ -647,12 +627,11 @@ namespace TuviPgpLibTests
             // Arrange: Set up test data with empty user identity
             var masterKey = CreateTestPublicKey();
             var encryptionKey = CreateTestPublicKey();
-            var signingKey = CreateTestPublicKey();
             string userIdentity = "";
 
             // Act & Assert: Verify that empty user identity throws exception
             var ex = Assert.Throws<ArgumentException>(() =>
-                EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, signingKey, userIdentity),
+                EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity),
                 "Should throw ArgumentException for empty user identity.");
             Assert.That(ex.Message, Does.Contain("User identity must not be null or empty."), "Exception message should indicate issue with user identity.");
         }
@@ -667,10 +646,9 @@ namespace TuviPgpLibTests
             // Arrange: Set up test public keys
             var masterKey = CreateTestPublicKey();
             var encryptionKey = CreateTestPublicKey();
-            var signingKey = CreateTestPublicKey();
 
             // Act: Create the public key ring with specified user identity
-            var keyRing = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, signingKey, userIdentity);
+            var keyRing = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity);
 
             // Assert: Key ring is not null
             Assert.That(keyRing, Is.Not.Null, $"Key ring should not be null for identity: {userIdentity}.");
@@ -681,20 +659,20 @@ namespace TuviPgpLibTests
             Assert.That(userIds, Has.Count.EqualTo(1), $"Should have exactly one user ID for identity: {userIdentity}.");
             Assert.That(userIds[0], Is.EqualTo(userIdentity), $"User ID should match provided identity: {userIdentity}.");
 
-            // Assert: There are exactly 3 public keys in the ring (1 master + 2 subkeys)
+            // Assert: There are exactly 2 public keys in the ring (1 master + 1 subkey)
             var allKeys = keyRing.GetPublicKeys().Cast<PgpPublicKey>().ToList();
-            Assert.That(allKeys, Has.Count.EqualTo(3), "Key ring should contain exactly 3 keys: 1 master and 2 subkeys.");
+            Assert.That(allKeys, Has.Count.EqualTo(2), "Key ring should contain exactly 2 keys: 1 master and 1 subkey.");
 
             // Assert: Identify the subkeys and their algorithms
             var subKeys = allKeys.Where(k => k.IsMasterKey == false).ToList();
-            Assert.That(subKeys, Has.Count.EqualTo(2), "Key ring should contain exactly 2 subkeys.");
+            Assert.That(subKeys, Has.Count.EqualTo(1), "Key ring should contain exactly 1 subkey.");
 
-            // Check presence of both ECDH and ECDSA subkeys
-            bool hasEncryptionSubkey = subKeys.Any(k => k.Algorithm == PublicKeyAlgorithmTag.ECDH);
-            bool hasSigningSubkey = subKeys.Any(k => k.Algorithm == PublicKeyAlgorithmTag.ECDsa);
+            // Check presence of both ECDH and ECDSA keys
+            bool hasEncryptionSubkey = allKeys.Any(k => k.Algorithm == PublicKeyAlgorithmTag.ECDH);
+            bool hasSigningKey = allKeys.Any(k => k.Algorithm == PublicKeyAlgorithmTag.ECDsa);
 
             Assert.That(hasEncryptionSubkey, Is.True, "Encryption subkey (ECDH) is missing.");
-            Assert.That(hasSigningSubkey, Is.True, "Signing subkey (ECDSA) is missing.");
+            Assert.That(hasSigningKey, Is.True, "Signing subkey (ECDSA) is missing.");
         }
     }
 }
