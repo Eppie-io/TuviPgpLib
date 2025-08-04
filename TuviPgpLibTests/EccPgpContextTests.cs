@@ -15,8 +15,11 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 using MimeKit.Cryptography;
+using Org.BouncyCastle.Asn1.X9;
 using Org.BouncyCastle.Bcpg;
+using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Security;
 using System.Globalization;
 
 namespace TuviPgpLibTests
@@ -48,7 +51,7 @@ namespace TuviPgpLibTests
         public async Task EссEncryptAndDecryptAsync()
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
 
             using Stream inputData = new MemoryStream();
             using Stream encryptedData = new MemoryStream();
@@ -74,7 +77,7 @@ namespace TuviPgpLibTests
             using Stream encryptedData = new MemoryStream();
             using (EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false))
             {
-                ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+                ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
 
                 using Stream inputData = new MemoryStream();
                 using var messageBody = new TextPart() { Text = TestData.TextContent };
@@ -86,7 +89,7 @@ namespace TuviPgpLibTests
 
             using (EccPgpContext anotherCtx = await InitializeEccPgpContextAsync().ConfigureAwait(false))
             {
-                anotherCtx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+                anotherCtx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
 
                 encryptedData.Position = 0;
                 var mime = anotherCtx.Decrypt(encryptedData);
@@ -103,13 +106,11 @@ namespace TuviPgpLibTests
             string ToHex(byte[] data) => string.Concat(data.Select(x => x.ToString("x2", CultureInfo.CurrentCulture)));
 
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
 
             var allPublicKeys = ctx.EnumerateSecretKeys().ToList();
-            Assert.That(allPublicKeys.Count, Is.EqualTo(3));
+            Assert.That(allPublicKeys.Count, Is.EqualTo(2));
             Assert.That(KeysEquals(allPublicKeys[0], allPublicKeys[1]), Is.False);
-            Assert.That(KeysEquals(allPublicKeys[0], allPublicKeys[2]), Is.False);
-            Assert.That(KeysEquals(allPublicKeys[1], allPublicKeys[2]), Is.False);
 
             var listOfKeys = ctx.GetPublicKeys(new List<MailboxAddress> { TestData.GetAccount().GetMailbox() });
             PgpPublicKey key = listOfKeys.First();
@@ -131,7 +132,7 @@ namespace TuviPgpLibTests
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
             Assert.That(ctx.CanSign(TestData.GetAccount().GetMailbox()), Is.False);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
             Assert.That(ctx.CanSign(TestData.GetAccount().GetMailbox()), Is.True);
         }
 
@@ -139,7 +140,7 @@ namespace TuviPgpLibTests
         public async Task EссSignAsync()
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
 
             using Stream inputData = new MemoryStream();
             using Stream encryptedData = new MemoryStream();
@@ -163,7 +164,7 @@ namespace TuviPgpLibTests
         public async Task EссEncryptAndSignAsync()
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
 
             using Stream inputData = new MemoryStream();
             using Stream encryptedData = new MemoryStream();
@@ -193,16 +194,16 @@ namespace TuviPgpLibTests
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
             Assert.Throws<ArgumentNullException>(
-                () => ctx.DeriveKeyPair(null, TestData.GetAccount().GetPgpIdentity()));
+                () => ctx.GeneratePgpKeysByTagOld(null, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity()));
             Assert.Throws<ArgumentNullException>(
-                () => ctx.DeriveKeyPair(TestData.MasterKey, null));
+                () => ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, null, null));
         }
 
         [Test]
         public async Task EссCanSignNullParameterThrowArgumentNullExceptionAsync()
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
             Assert.That(ctx.CanSign(TestData.GetAccount().GetMailbox()), Is.True);
             Assert.Throws<ArgumentNullException>(
                () => ctx.CanSign(null));
@@ -212,7 +213,7 @@ namespace TuviPgpLibTests
         public async Task EссGetSigningKeyAsync()
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
             Assert.That(ctx.GetSigningKey(TestData.GetAccount().GetMailbox()), Is.Not.Null);
         }
 
@@ -224,9 +225,454 @@ namespace TuviPgpLibTests
                () => ctx.GetSigningKey(TestData.GetAccount().GetMailbox()));
             Assert.Throws<ArgumentNullException>(
                () => ctx.GetSigningKey(null));
-            ctx.DeriveKeyPair(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity());
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
             Assert.Throws<ArgumentNullException>(
                () => ctx.GetSigningKey(null));
+        }
+
+        const int CoinType = 3630;
+
+        [Test]
+        public async Task EccBip44KeyDerivationForDecTest()
+        {
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            int account = 0;
+            int channel = 10; // Mail channel
+            int index = 0;
+            string userIdentity = TestData.GetAccount().GetPgpIdentity();
+
+            ctx.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, account, channel, index);
+
+            var publicKeys = ctx.EnumeratePublicKeyRings().ToList();
+            var secretKeys = ctx.EnumerateSecretKeyRings().ToList();
+            Assert.That(publicKeys.Count, Is.GreaterThan(0), "No public keys generated");
+            Assert.That(secretKeys.Count, Is.GreaterThan(0), "No secret keys generated");
+
+            // Determinism check: repeated derivation with the same parameters gives the same keys
+            using EccPgpContext ctx2 = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            ctx2.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, account, channel, index);
+            var publicKeys2 = ctx2.EnumeratePublicKeyRings().ToList();
+            var secretKeys2 = ctx2.EnumerateSecretKeyRings().ToList();
+            Assert.That(publicKeys.Count, Is.EqualTo(publicKeys2.Count), "Public key count mismatch");
+            Assert.That(secretKeys.Count, Is.EqualTo(secretKeys2.Count), "Secret key count mismatch");
+            Assert.That(publicKeys[0].GetPublicKey().GetFingerprint(), Is.EqualTo(publicKeys2[0].GetPublicKey().GetFingerprint()), "Public key fingerprint mismatch");
+            Assert.That(secretKeys[0].GetSecretKey().KeyId, Is.EqualTo(secretKeys2[0].GetSecretKey().KeyId), "Secret key id mismatch");
+        }
+
+        [Test]
+        public async Task DeriveKeyForDecDifferentValidParameters()
+        {
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            string userIdentity = TestData.GetAccount().GetPgpIdentity();
+            int[] accounts = { 0, 1 };
+            int[] channels = { 10, 20 };
+            int[] indices = { 0, 1 };
+            foreach (var account in accounts)
+            {
+                foreach (var channel in channels)
+                {
+                    foreach (var index in indices)
+                    {
+                        ctx.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, account, channel, index);
+                        var publicKeys = ctx.EnumeratePublicKeyRings().ToList();
+                        var secretKeys = ctx.EnumerateSecretKeyRings().ToList();
+                        Assert.That(publicKeys.Count, Is.GreaterThan(0));
+                        Assert.That(secretKeys.Count, Is.GreaterThan(0));
+                        ctx.Delete(publicKeys[0]);
+                        ctx.Delete(secretKeys[0]);
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public async Task DeriveKeyForDecBoundaryValues()
+        {
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            string userIdentity = TestData.GetAccount().GetPgpIdentity();
+            ctx.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, 0, 0, 0, 0);
+            ctx.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue);
+            var publicKeys = ctx.EnumeratePublicKeyRings().ToList();
+            var secretKeys = ctx.EnumerateSecretKeyRings().ToList();
+            Assert.That(publicKeys.Count, Is.GreaterThan(0));
+            Assert.That(secretKeys.Count, Is.GreaterThan(0));
+        }
+
+        [Test]
+        public async Task DeriveKeyForDecInvalidParametersThrows()
+        {
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            string userIdentity = TestData.GetAccount().GetPgpIdentity();
+            Assert.Throws<ArgumentNullException>(() => ctx.GeneratePgpKeysByBip44(null, userIdentity, CoinType, 0, 10, 0));
+            Assert.Throws<ArgumentNullException>(() => ctx.GeneratePgpKeysByBip44(TestData.MasterKey, null, CoinType, 0, 10, 0));
+            Assert.Throws<ArgumentOutOfRangeException>(() => ctx.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, -1, 10, 0));
+            Assert.Throws<ArgumentOutOfRangeException>(() => ctx.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, 0, -1, 0));
+            Assert.Throws<ArgumentOutOfRangeException>(() => ctx.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, 0, 10, -1));
+        }
+
+        [Test]
+        public async Task DeriveKeyForDecUniqueness()
+        {
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            string userIdentity = TestData.GetAccount().GetPgpIdentity();
+            ctx.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, 0, 10, 0);
+            var publicKeys1 = ctx.EnumeratePublicKeyRings().Select(x => x.GetPublicKey().GetFingerprint()).ToList();
+            var secretKeys1 = ctx.EnumerateSecretKeyRings().Select(x => x.GetSecretKey().KeyId).ToList();
+            ctx.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, 0, 10, 1);
+            var publicKeys2 = ctx.EnumeratePublicKeyRings().Select(x => x.GetPublicKey().GetFingerprint()).ToList();
+            var secretKeys2 = ctx.EnumerateSecretKeyRings().Select(x => x.GetSecretKey().KeyId).ToList();
+            // Check that new keys are unique by fingerprint/KeyId
+            bool foundUniquePublic = publicKeys2.Except(publicKeys1).Any();
+            bool foundUniqueSecret = secretKeys2.Except(secretKeys1).Any();
+            Assert.That(foundUniquePublic, Is.True, "No unique public key generated");
+            Assert.That(foundUniqueSecret, Is.True, "No unique secret key generated");
+        }
+
+        [Test]
+        public async Task DeriveKeyForDecRepeatability()
+        {
+            using EccPgpContext ctx1 = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            using EccPgpContext ctx2 = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            string userIdentity = TestData.GetAccount().GetPgpIdentity();
+            ctx1.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, 0, 10, 0);
+            ctx2.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, 0, 10, 0);
+            var publicKeys1 = ctx1.EnumeratePublicKeyRings().ToList();
+            var secretKeys1 = ctx1.EnumerateSecretKeyRings().ToList();
+            var publicKeys2 = ctx2.EnumeratePublicKeyRings().ToList();
+            var secretKeys2 = ctx2.EnumerateSecretKeyRings().ToList();
+            Assert.That(publicKeys1[0].GetPublicKey().GetFingerprint(), Is.EqualTo(publicKeys2[0].GetPublicKey().GetFingerprint()));
+            Assert.That(secretKeys1[0].GetSecretKey().KeyId, Is.EqualTo(secretKeys2[0].GetSecretKey().KeyId));
+        }
+
+        [Test]
+        public async Task DeriveKeyForDecBulkGeneration()
+        {
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            string userIdentity = TestData.GetAccount().GetPgpIdentity();
+            for (int i = 0; i < 5; i++)
+            {
+                ctx.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, 0, 10, i);
+            }
+            var publicKeys = ctx.EnumeratePublicKeyRings().ToList();
+            var secretKeys = ctx.EnumerateSecretKeyRings().ToList();
+            Assert.That(publicKeys.Count, Is.GreaterThanOrEqualTo(5));
+            Assert.That(secretKeys.Count, Is.GreaterThanOrEqualTo(5));
+        }
+
+        private const string ValidTag = "TestTag";
+
+        [Test]
+        public void GenerateEccPublicKeyBip44ValidParametersReturnsValidPublicKey()
+        {
+            // Arrange
+            var masterKey = TestData.MasterKey;
+            int coin = CoinType;
+            int account = 0;
+            int channel = 10; // Mail channel
+            int index = 0;
+
+            // Act
+            var publicKey = EccPgpContext.GenerateEccPublicKey(masterKey, coin, account, channel, index);
+
+            // Assert
+            Assert.That(publicKey, Is.Not.Null, "Public key should not be null");
+            Assert.That(publicKey.Q, Is.Not.Null, "Public key point should not be null");
+            Assert.That(publicKey.PublicKeyParamSet, Is.EqualTo(ECNamedCurveTable.GetOid(EccPgpContext.BitcoinEllipticCurveName)),
+                "Public key should use secp256k1 curve");
+            Assert.That(publicKey.Q.GetEncoded().Length, Is.GreaterThan(0), "Public key encoding should not be empty");
+        }
+
+        [Test]
+        public void GenerateEccPublicKeyBip44SameParametersReturnsSameKey()
+        {
+            // Arrange
+            var masterKey = TestData.MasterKey;
+            int coin = CoinType;
+            int account = 0;
+            int channel = 10;
+            int index = 0;
+
+            // Act
+            var publicKey1 = EccPgpContext.GenerateEccPublicKey(masterKey, coin, account, channel, index);
+            var publicKey2 = EccPgpContext.GenerateEccPublicKey(masterKey, coin, account, channel, index);
+
+            // Assert
+            string ToHex(byte[] data) => string.Concat(data.Select(x => x.ToString("x2", CultureInfo.CurrentCulture)));
+            Assert.That(ToHex(publicKey1.Q.GetEncoded()), Is.EqualTo(ToHex(publicKey2.Q.GetEncoded())),
+                "Public keys generated with the same BIP-44 parameters should be identical");
+        }
+
+        [Test]
+        public void GenerateEccPublicKeyBip44DifferentIndicesReturnsDifferentKeys()
+        {
+            // Arrange
+            var masterKey = TestData.MasterKey;
+            int coin = CoinType;
+            int account = 0;
+            int channel = 10;
+            int index1 = 0;
+            int index2 = 1;
+
+            // Act
+            var publicKey1 = EccPgpContext.GenerateEccPublicKey(masterKey, coin, account, channel, index1);
+            var publicKey2 = EccPgpContext.GenerateEccPublicKey(masterKey, coin, account, channel, index2);
+
+            // Assert
+            string ToHex(byte[] data) => string.Concat(data.Select(x => x.ToString("x2", CultureInfo.CurrentCulture)));
+            Assert.That(ToHex(publicKey1.Q.GetEncoded()), Is.Not.EqualTo(ToHex(publicKey2.Q.GetEncoded())),
+                "Public keys generated with different indices should be unique");
+        }
+
+        [Test]
+        public void GenerateEccPublicKeyBip44NullMasterKeyThrowsArgumentNullException()
+        {
+            // Arrange
+            int coin = CoinType;
+            int account = 0;
+            int channel = 10;
+            int index = 0;
+
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(
+                () => EccPgpContext.GenerateEccPublicKey(null, coin, account, channel, index),
+                "Null masterKey should throw ArgumentNullException");
+        }
+
+        [Test]
+        [TestCase(-1, 0, 0, 0, "coin")]
+        [TestCase(CoinType, -1, 0, 0, "account")]
+        [TestCase(CoinType, 0, -1, 0, "channel")]
+        [TestCase(CoinType, 0, 0, -1, "index")]
+        public void GenerateEccPublicKeyBip44NegativeParametersThrowsArgumentOutOfRangeException(int coin, int account, int channel, int index, string paramName)
+        {
+            // Arrange
+            var masterKey = TestData.MasterKey;
+
+            // Act & Assert
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(
+                () => EccPgpContext.GenerateEccPublicKey(masterKey, coin, account, channel, index),
+                $"Negative {paramName} should throw ArgumentOutOfRangeException");
+            Assert.That(ex.ParamName, Is.EqualTo(paramName), "Exception should indicate the correct parameter name");
+        }
+
+        [Test]
+        public void GenerateEccPublicKeyBip44BoundaryValuesReturnsValidPublicKey()
+        {
+            // Arrange
+            var masterKey = TestData.MasterKey;
+            int coin = int.MaxValue;
+            int account = int.MaxValue;
+            int channel = int.MaxValue;
+            int index = int.MaxValue;
+
+            // Act
+            var publicKey = EccPgpContext.GenerateEccPublicKey(masterKey, coin, account, channel, index);
+
+            // Assert
+            Assert.That(publicKey, Is.Not.Null, "Public key should not be null for boundary values");
+            Assert.That(publicKey.Q, Is.Not.Null, "Public key point should not be null");
+            Assert.That(publicKey.PublicKeyParamSet, Is.EqualTo(ECNamedCurveTable.GetOid(EccPgpContext.BitcoinEllipticCurveName)),
+                "Public key should use secp256k1 curve");
+        }
+
+        [Test]
+        public void GenerateEccPublicKeyTagValidParametersReturnsValidPublicKey()
+        {
+            // Arrange
+            var masterKey = TestData.MasterKey;
+            string keyTag = ValidTag;
+
+            // Act
+            var publicKey = EccPgpContext.GenerateEccPublicKey(masterKey, keyTag);
+
+            // Assert
+            Assert.That(publicKey, Is.Not.Null, "Public key should not be null");
+            Assert.That(publicKey.Q, Is.Not.Null, "Public key point should not be null");
+            Assert.That(publicKey.PublicKeyParamSet, Is.EqualTo(ECNamedCurveTable.GetOid(EccPgpContext.BitcoinEllipticCurveName)),
+                "Public key should use secp256k1 curve");
+            Assert.That(publicKey.Q.GetEncoded().Length, Is.GreaterThan(0), "Public key encoding should not be empty");
+        }
+
+        [Test]
+        public void GenerateEccPublicKeyTagSameTagReturnsSameKey()
+        {
+            // Arrange
+            var masterKey = TestData.MasterKey;
+            string keyTag = ValidTag;
+
+            // Act
+            var publicKey1 = EccPgpContext.GenerateEccPublicKey(masterKey, keyTag);
+            var publicKey2 = EccPgpContext.GenerateEccPublicKey(masterKey, keyTag);
+
+            // Assert
+            string ToHex(byte[] data) => string.Concat(data.Select(x => x.ToString("x2", CultureInfo.CurrentCulture)));
+            Assert.That(ToHex(publicKey1.Q.GetEncoded()), Is.EqualTo(ToHex(publicKey2.Q.GetEncoded())),
+                "Public keys generated with the same tag should be identical");
+        }
+
+        [Test]
+        public void GenerateEccPublicKeyTagDifferentTagsReturnsDifferentKeys()
+        {
+            // Arrange
+            var masterKey = TestData.MasterKey;
+            string keyTag1 = ValidTag;
+            string keyTag2 = ValidTag + "_different";
+
+            // Act
+            var publicKey1 = EccPgpContext.GenerateEccPublicKey(masterKey, keyTag1);
+            var publicKey2 = EccPgpContext.GenerateEccPublicKey(masterKey, keyTag2);
+
+            // Assert
+            string ToHex(byte[] data) => string.Concat(data.Select(x => x.ToString("x2", CultureInfo.CurrentCulture)));
+            Assert.That(ToHex(publicKey1.Q.GetEncoded()), Is.Not.EqualTo(ToHex(publicKey2.Q.GetEncoded())),
+                "Public keys generated with different tags should be unique");
+        }
+
+        [Test]
+        public void GenerateEccPublicKeyTagNullMasterKeyThrowsArgumentNullException()
+        {
+            // Arrange
+            string keyTag = ValidTag;
+
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(
+                () => EccPgpContext.GenerateEccPublicKey(null, keyTag),
+                "Null masterKey should throw ArgumentNullException");
+        }
+
+        [Test]
+        public void GenerateEccPublicKeyTagNullTagThrowsArgumentNullException()
+        {
+            // Arrange
+            var masterKey = TestData.MasterKey;
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(
+                () => EccPgpContext.GenerateEccPublicKey(masterKey, null),
+                "Null keyTag should throw ArgumentNullException");
+        }
+
+        [Test]
+        public void GenerateEccPublicKeyTagEmptyTagThrowsArgumentException()
+        {
+            // Arrange
+            var masterKey = TestData.MasterKey;
+            string keyTag = string.Empty;
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(
+                () => EccPgpContext.GenerateEccPublicKey(masterKey, keyTag),
+                "Empty keyTag should throw ArgumentException");
+        }
+
+
+        private const string BitcoinEllipticCurveName = "secp256k1";
+        
+        private static ECPublicKeyParameters CreateTestPublicKey()
+        {
+            // Create a test public key on the secp256k1 curve
+            var curveOid = ECNamedCurveTable.GetOid(BitcoinEllipticCurveName);
+            var keyParams = new ECKeyGenerationParameters(curveOid, new SecureRandom());
+            var generator = new ECKeyPairGenerator();
+            generator.Init(keyParams);
+            var keyPair = generator.GenerateKeyPair();
+            return (ECPublicKeyParameters)keyPair.Public;
+        }
+
+        [Test]
+        public void CreatePgpPublicKeyRingNullMasterKeyThrowsArgumentNullException()
+        {
+            // Arrange: Set up test data with null master key
+            var encryptionKey = CreateTestPublicKey();
+            string userIdentity = "user@example.com";
+
+            // Act & Assert: Verify that null master key throws exception
+            var ex = Assert.Throws<ArgumentNullException>(() =>
+                EccPgpContext.CreatePgpPublicKeyRing(null, encryptionKey, userIdentity),
+                "Should throw ArgumentNullException for null master key.");
+            Assert.That(ex.ParamName, Is.EqualTo("masterPublicKey"), "Exception should indicate correct parameter name.");
+        }
+
+        [Test]
+        public void CreatePgpPublicKeyRingNullEncryptionKeyThrowsArgumentNullException()
+        {
+            // Arrange: Set up test data with null encryption key
+            var masterKey = CreateTestPublicKey();
+            string userIdentity = "user@example.com";
+
+            // Act & Assert: Verify that null encryption key throws exception
+            var ex = Assert.Throws<ArgumentNullException>(() =>
+                EccPgpContext.CreatePgpPublicKeyRing(masterKey, null, userIdentity),
+                "Should throw ArgumentNullException for null encryption key.");
+            Assert.That(ex.ParamName, Is.EqualTo("encryptionPublicKey"), "Exception should indicate correct parameter name.");
+        }
+
+        [Test]
+        public void CreatePgpPublicKeyRingNullUserIdentityThrowsArgumentException()
+        {
+            // Arrange: Set up test data with null user identity
+            var masterKey = CreateTestPublicKey();
+            var encryptionKey = CreateTestPublicKey();
+
+            // Act & Assert: Verify that null user identity throws exception
+            var ex = Assert.Throws<ArgumentException>(() =>
+                EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, null),
+                "Should throw ArgumentException for null user identity.");
+            Assert.That(ex.Message, Does.Contain("User identity must not be null or empty."), "Exception message should indicate issue with user identity.");
+        }
+
+        [Test]
+        public void CreatePgpPublicKeyRingEmptyUserIdentityThrowsArgumentException()
+        {
+            // Arrange: Set up test data with empty user identity
+            var masterKey = CreateTestPublicKey();
+            var encryptionKey = CreateTestPublicKey();
+            string userIdentity = "";
+
+            // Act & Assert: Verify that empty user identity throws exception
+            var ex = Assert.Throws<ArgumentException>(() =>
+                EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity),
+                "Should throw ArgumentException for empty user identity.");
+            Assert.That(ex.Message, Does.Contain("User identity must not be null or empty."), "Exception message should indicate issue with user identity.");
+        }
+
+        [Test]
+        [TestCase("user@example.com")]
+        [TestCase("John Doe <user@example.com>")]
+        [TestCase("test@eppie")]
+        [TestCase("agrutu67edu83skwcj4fkzd4n4xf2dadm9wwrzezh5s9t859sbier@eppie")]
+        public void CreatePgpPublicKeyRingDifferentUserIdentityFormatsCreatesValidKeyRing(string userIdentity)
+        {
+            // Arrange: Set up test public keys
+            var masterKey = CreateTestPublicKey();
+            var encryptionKey = CreateTestPublicKey();
+
+            // Act: Create the public key ring with specified user identity
+            var keyRing = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity);
+
+            // Assert: Key ring is not null
+            Assert.That(keyRing, Is.Not.Null, $"Key ring should not be null for identity: {userIdentity}.");
+
+            // Assert: Master public key has correct user ID
+            var masterPublicKey = keyRing.GetPublicKey();
+            var userIds = masterPublicKey.GetUserIds().ToList();
+            Assert.That(userIds, Has.Count.EqualTo(1), $"Should have exactly one user ID for identity: {userIdentity}.");
+            Assert.That(userIds[0], Is.EqualTo(userIdentity), $"User ID should match provided identity: {userIdentity}.");
+
+            // Assert: There are exactly 2 public keys in the ring (1 master + 1 subkey)
+            var allKeys = keyRing.GetPublicKeys().Cast<PgpPublicKey>().ToList();
+            Assert.That(allKeys, Has.Count.EqualTo(2), "Key ring should contain exactly 2 keys: 1 master and 1 subkey.");
+
+            // Assert: Identify the subkeys and their algorithms
+            var subKeys = allKeys.Where(k => k.IsMasterKey == false).ToList();
+            Assert.That(subKeys, Has.Count.EqualTo(1), "Key ring should contain exactly 1 subkey.");
+
+            // Check presence of both ECDH and ECDSA keys
+            bool hasEncryptionSubkey = allKeys.Any(k => k.Algorithm == PublicKeyAlgorithmTag.ECDH);
+            bool hasSigningKey = allKeys.Any(k => k.Algorithm == PublicKeyAlgorithmTag.ECDsa);
+
+            Assert.That(hasEncryptionSubkey, Is.True, "Encryption subkey (ECDH) is missing.");
+            Assert.That(hasSigningKey, Is.True, "Signing subkey (ECDSA) is missing.");
         }
     }
 }

@@ -31,56 +31,21 @@ namespace TuviPgpLibImpl
 {
     public static class TuviPgpContextCreator
     {
-        public static ITuviPgpContext GetPgpContext(IKeyStorage storage, IKeyMatcher keyMatcher)
+        public static ITuviPgpContext GetPgpContext(IKeyStorage storage)
         {
-            return new TuviPgpContext(storage, keyMatcher);
+            return new TuviPgpContext(storage);
         }
-    }
-
-    public interface IKeyMatcher
-    {
-        bool IsMatch(PgpPublicKey key, MailboxAddress mailbox);
     }
 
     public class TuviPgpContext : EccPgpContext, ITuviPgpContext
     {
-        private readonly IKeyMatcher _matcher;
-        public TuviPgpContext(IKeyStorage storage, IKeyMatcher keyMatcher = null) : base(storage)
+        public TuviPgpContext(IKeyStorage storage) : base(storage)
         {
-            _matcher = keyMatcher;
         }
 
         protected override string GetPasswordForKey(PgpSecretKey key)
         {
             return string.Empty;
-        }
-
-        public override IEnumerable<PgpPublicKeyRing> EnumeratePublicKeyRings(MailboxAddress mailbox)
-        {
-            if (mailbox == null)
-                throw new ArgumentNullException(nameof(mailbox));
-
-            foreach (var keyring in EnumeratePublicKeyRings())
-            {
-                var publicKey = keyring.GetPublicKey();
-                if (IsMatch(publicKey, mailbox) || (_matcher != null && _matcher.IsMatch(publicKey, mailbox)))
-                    yield return keyring;
-            }
-
-            yield break;
-        }
-
-        protected override PgpPublicKey GetPublicKey(MailboxAddress mailbox)
-        {
-            foreach (var key in EnumeratePublicKeys(mailbox))
-            {
-                if (!key.IsEncryptionKey || IsExpired(key))
-                    continue;
-
-                return key;
-            }
-
-            throw new PublicKeyNotFoundException(mailbox, "The public key could not be found.");
         }
 
         public bool IsSecretKeyExist(UserIdentity userIdentity)
@@ -91,6 +56,26 @@ namespace TuviPgpLibImpl
             }
 
             return CanSign(new MimeKit.MailboxAddress(userIdentity.Name, userIdentity.Address));
+        }
+
+        public void RemoveKeys(string userIdentity)
+        {
+            if (string.IsNullOrEmpty(userIdentity))
+            {
+                throw new ArgumentNullException(nameof(userIdentity), "User identity cannot be null or empty.");
+            }
+
+            var secretKeyRingsToRemove = SecretKeyRingBundle.GetKeyRings(userIdentity).ToList();
+            foreach (var keyRing in secretKeyRingsToRemove)
+            {
+                Delete(keyRing);
+            }
+
+            var publicKeyRingsToRemove = PublicKeyRingBundle.GetKeyRings(userIdentity).ToList();
+            foreach (var keyRing in publicKeyRingsToRemove)
+            {
+                Delete(keyRing);
+            }
         }
 
         public void ExportSecretKeys(string userIdentity, Stream outputStream, bool isArmored = false)

@@ -1,5 +1,5 @@
 ﻿///////////////////////////////////////////////////////////////////////////////
-//   Copyright 2023 Eppie (https://eppie.io)
+//   Copyright 2025 Eppie (https://eppie.io)
 //
 //   Licensed under the Apache License, Version 2.0(the "License");
 //   you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ using Org.BouncyCastle.Math.EC.Multiplier;
 using Org.BouncyCastle.Security;
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -43,46 +44,135 @@ namespace TuviPgpLibImpl
     public abstract class EccPgpContext : ExternalStorageBasedPgpContext, IEllipticCurveCryptographyPgpContext
     {
         public const string BitcoinEllipticCurveName = "secp256k1";
-        private readonly DateTime KeyCreationTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-        public const long ExpirationTime = 0;
 
-        enum KeyCreationReason : int
-        {
-            Signature = 0,
-            Encryption = 1
-        };
+        private static readonly DateTime KeyCreationTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+        private const long ExpirationTime = 0;
+        private const SymmetricKeyAlgorithmTag DefaultSymmetricKeyAlgorithmTag = SymmetricKeyAlgorithmTag.Aes128;
+        private const HashAlgorithmTag DefaultHashAlgorithmTag = HashAlgorithmTag.Sha256;
 
+        private const string EncryptionTag = "Encryption";
+        
         enum KeyType : uint
         {
             MasterKey = 0,
-            SignatureKey = 1,
-            EncryptionKey = 2
+            EncryptionKey = 1
         };
+
+        private const EncryptionAlgorithm DefaultEncryptionAlgorithmTag = EncryptionAlgorithm.Aes256;
 
         protected EccPgpContext(IKeyStorage storage)
             : base(storage)
         {
+            DefaultEncryptionAlgorithm = DefaultEncryptionAlgorithmTag;
         }
 
         /// <summary>
-        /// Realization of IEllipticCurveCryptographyPgpContext interface. 
-        /// Creates keypairs and add (import) it to the current context.
+        /// Derives a PGP key pair based on the provided master key and tag, associating it with the specified user identity.
+        /// Generates a master key and subkey for encryption using elliptic curve cryptography (ECC) on the secp256k1 curve.
+        /// The generated keys are imported into the current context.
         /// </summary>
-        /// <param name="masterKey">Master key.</param>
-        /// <param name="userIdentity">User Id (email).</param>
-        public void DeriveKeyPair(MasterKey masterKey, string userIdentity)
+        /// <param name="masterKey">The master key used for key derivation. Must not be null.</param>
+        /// <param name="userIdentity">The user identity (e.g., email address) associated with the keys in the PGP key ring. Not used in key derivation. Must not be null.</param>
+        /// <param name="tag">The string tag used to customize key derivation. Must not be null.</param>
+        /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
+        /// <remarks>
+        /// This method deterministically derives a master key, along with an encryption subkey, all from a single derivation key,
+        /// using a tag-based key derivation scheme. These keys form a unified PGP key hierarchy.
+        /// The <paramref name="userIdentity"/> parameter is used solely to assign the identity in the PGP key ring and does not influence key derivation.
+        /// Key derivation is performed using the secp256k1 elliptic curve.
+        /// </remarks>
+        public void GeneratePgpKeysByTag(MasterKey masterKey, string userIdentity, string tag)
         {
-            DeriveKeyPair(masterKey, userIdentity, userIdentity);
+            if (masterKey == null)
+            {
+                throw new ArgumentNullException(nameof(masterKey), "Parameter is not set.");
+            }
+
+            if (userIdentity == null)
+            {
+                throw new ArgumentNullException(nameof(userIdentity), "Parameter is not set.");
+            }
+
+            if (tag == null)
+            {
+                throw new ArgumentNullException(nameof(tag), "Parameter is not set.");
+            }
+
+            var generator = CreateEllipticCurveKeyRingGeneratorForTag(masterKey, userIdentity, tag);
+
+            Import(generator.GenerateSecretKeyRing());
+            Import(generator.GeneratePublicKeyRing());
         }
 
         /// <summary>
-        /// Realization of IEllipticCurveCryptographyPgpContext interface. 
-        /// Creates keypairs and add (import) it to the current context.
+        /// Derives a PGP key pair using BIP44 hierarchical deterministic key derivation and associates it with the user identity.
+        /// Generates ECC keys (secp256k1) for a master key and encryption subkey using the path m/44'/coin'/account'/channel/index.
+        /// Imports the keys into the PGP key ring.
         /// </summary>
-        /// <param name="masterKey">Master key.</param>
-        /// <param name="userIdentity">User Id (email).</param>
-        /// <param name="tag">Tag.</param>
-        public void DeriveKeyPair(MasterKey masterKey, string userIdentity, string tag)
+        /// <param name="masterKey">The master key for BIP44 derivation.</param>
+        /// <param name="userIdentity">The user identity (e.g., email) associated with the PGP key ring, not used in derivation.</param>
+        /// <param name="coin">Hardened coin type (SLIP-44) for derivation. Must be non-negative.</param>
+        /// <param name="account">Hardened account index for derivation. Must be non-negative.</param>        
+        /// <param name="channel">Non-hardened channel type (e.g., 10 for mail). Must be non-negative.</param>
+        /// <param name="index">Non-hardened address index. Must be non-negative.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="masterKey"/> or <paramref name="userIdentity"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="account"/>, <paramref name="channel"/>, or <paramref name="index"/> is negative.</exception>
+        // <remarks>
+        /// This method deterministically derives a master key, along with an encryption subkey, all from a single derivation key,
+        /// using a BIP44 key derivation scheme. These keys form a unified PGP key hierarchy.
+        /// The derivation path follows BIP44: m/44'/coin'/account'/channel/index. 
+        /// The <paramref name="userIdentity"/> parameter is used solely to assign the identity in the PGP key ring and does not influence key derivation.
+        /// Key derivation is performed using the secp256k1 elliptic curve.
+        /// </remarks>
+        public void GeneratePgpKeysByBip44(MasterKey masterKey, string userIdentity, int coin, int account, int channel, int index)
+        {
+            if (masterKey == null)
+            {
+                throw new ArgumentNullException(nameof(masterKey), "Parameter is not set.");
+            }
+
+            if (userIdentity == null)
+            {
+                throw new ArgumentNullException(nameof(userIdentity), "Parameter is not set.");
+            }
+
+            if (account < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(account), "Account index must be non-negative.");
+            }
+
+            if (channel < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(channel), "Channel index must be non-negative.");
+            }
+
+            if (index < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index), "Address index must be non-negative.");
+            }
+
+            var generator = CreateEllipticCurveKeyRingGeneratorForBip44(masterKey, userIdentity, coin, account, channel, index);
+
+            Import(generator.GenerateSecretKeyRing());
+            Import(generator.GeneratePublicKeyRing());
+        }
+
+
+        /// <summary>
+        /// Derives a PGP key pair based on the provided master key and tag, associating it with the specified user identity.
+        /// Generates a master key and encryption subkey using elliptic curve cryptography (ECC) on the secp256k1 curve.
+        /// The generated keys are imported into the current context.
+        /// </summary>
+        /// <param name="masterKey">The master key used for key derivation. Must not be null.</param>
+        /// <param name="userIdentity">The user identity (e.g., email address) associated with the keys in the PGP key ring. Not used in key derivation. Must not be null.</param>
+        /// <param name="tag">The string tag used to customize key derivation. Must not be null.</param>
+        /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
+        /// This method deterministically derives unique keys: a master key, along with an encryption subkey,
+        /// using a tag-based key derivation scheme. These keys form a unified PGP key hierarchy.
+        /// The <paramref name="userIdentity"/> parameter is used solely to assign the identity in the PGP key ring and does not influence key derivation.
+        /// Key derivation is performed using the secp256k1 elliptic curve.
+        /// </remarks>
+        public void GeneratePgpKeysByTagOld(MasterKey masterKey, string userIdentity, string tag)
         {
             if (masterKey == null)
             {
@@ -105,46 +195,185 @@ namespace TuviPgpLibImpl
             Import(generator.GeneratePublicKeyRing());
         }
 
-        public void DeriveKeyForDec(MasterKey masterKey, string userIdentity, string tag)
+        /// <summary>
+        /// Generates an elliptic curve (EC) public key using BIP-44 hierarchical deterministic key derivation.
+        /// </summary>
+        /// <param name="masterKey">The master key used as the root for key derivation. Must not be null.</param>
+        /// <param name="coin">The hardened coin type index as per SLIP-44. Must be non-negative.</param>
+        /// <param name="account">The hardened account index for derivation. Must be non-negative.</param>
+        /// <param name="channel">The non-hardened channel index (e.g., 10 for mail). Must be non-negative.</param>
+        /// <param name="index">The non-hardened address index for derivation. Must be non-negative.</param>
+        /// <returns>An <see cref="ECPublicKeyParameters"/> object representing the derived public key on the secp256k1 curve.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="masterKey"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when the derived private key is invalid (e.g., zero or incorrect length).</exception>
+        /// <remarks>
+        /// This method follows the BIP-44 derivation path: <c>m/44'/coin'/account'/channel/index</c>.
+        /// The resulting key is suitable for use in elliptic curve cryptography operations, such as ECDH or ECDsa.
+        /// </remarks>
+        public static ECPublicKeyParameters GenerateEccPublicKey(MasterKey masterKey, int coin, int account, int channel, int index)
         {
             if (masterKey == null)
             {
-                throw new ArgumentNullException(nameof(masterKey), "Parameter is not set.");
+                throw new ArgumentNullException(nameof(masterKey));
             }
 
-            if (userIdentity == null)
+            if (coin < 0)
             {
-                throw new ArgumentNullException(nameof(userIdentity), "Parameter is not set.");
+                throw new ArgumentOutOfRangeException(nameof(coin), "Coin index must be non-negative.");
             }
 
-            if (tag == null)
+            if (account < 0)
             {
-                throw new ArgumentNullException(nameof(tag), "Parameter is not set.");
+                throw new ArgumentOutOfRangeException(nameof(account), "Account index must be non-negative.");
             }
 
-            var generator = CreateEllipticCurveKeyRingGeneratorForDec(masterKey, userIdentity, tag);
+            if (channel < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(channel), "Channel index must be non-negative.");
+            }
 
-            Import(generator.GenerateSecretKeyRing());
-            Import(generator.GeneratePublicKeyRing());
+            if (index < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index), "Address index must be non-negative.");
+            }
+
+            var childKey = DerivationKeyFactory.CreatePrivateDerivationKeyBip44(masterKey, coin, account, channel, index);
+            
+            return GenerateEccPublicKey(childKey);
         }
 
         /// <summary>
-        /// Creates child keypair from choosen derivationKey with specific keyIndex.
+        /// Generates an elliptic curve (EC) public key using a tag-based key derivation scheme.
         /// </summary>
-        /// <param name="derivationKey">Derivation key.</param>
-        /// <param name="keyIndex">Key index.</param>
-        /// <returns>Derived key pair.</returns>
-        public static AsymmetricCipherKeyPair DeriveKeyPair(PrivateDerivationKey derivationKey, int keyIndex)
+        /// <param name="masterKey">The master key used as the root for key derivation. Must not be null.</param>
+        /// <param name="keyTag">The string tag used to customize the key derivation process. Must not be null.</param>
+        /// <returns>An <see cref="ECPublicKeyParameters"/> object representing the derived public key on the secp256k1 curve.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="masterKey"/> or <paramref name="keyTag"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when the derived private key is invalid (e.g., zero or incorrect length).</exception>
+        /// <remarks>
+        /// This method derives a private key using the provided <paramref name="keyTag"/>, followed by an encryption-specific tag
+        /// and a child key index of 0. The resulting key is suitable for use in elliptic curve cryptography operations, such as ECDH.
+        /// </remarks>
+        public static ECPublicKeyParameters GenerateEccPublicKey(MasterKey masterKey, string keyTag)
         {
+            if (masterKey == null)
+            {
+                throw new ArgumentNullException(nameof(masterKey));
+            }
+
+            if (string.IsNullOrEmpty(keyTag))
+            {
+                throw new ArgumentException(nameof(keyTag));
+            }
+
+            var childKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, keyTag);
+            return GenerateEccPublicKey(childKey);
+        }
+
+        /// <summary>
+        /// Creates a PGP public key ring containing a master key and encryption subkey
+        /// using elliptic curve cryptography parameters, associating them with a user identity.
+        /// </summary>
+        /// <param name="masterPublicKey">The elliptic curve public key parameters for the master key (ECDsa). Must not be null.</param>
+        /// <param name="encryptionPublicKey">The elliptic curve public key parameters for the encryption subkey (ECDH). Must not be null.</param>
+        /// <param name="userIdentity">The user identity (e.g., email address) to associate with the keys. Must not be null or empty.</param>
+        /// <returns>A <see cref="PgpPublicKeyRing"/> object containing the master key and encryption subkey.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when any of the public key parameters or <paramref name="userIdentity"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="userIdentity"/> is empty.</exception>
+        public static PgpPublicKeyRing CreatePgpPublicKeyRing(
+            ECPublicKeyParameters masterPublicKey,
+            ECPublicKeyParameters encryptionPublicKey,
+            string userIdentity)
+        {
+            if (masterPublicKey == null)
+            {
+                throw new ArgumentNullException(nameof(masterPublicKey));
+            }
+
+            if (encryptionPublicKey == null)
+            {
+                throw new ArgumentNullException(nameof(encryptionPublicKey));
+            }
+
+            if (string.IsNullOrEmpty(userIdentity))
+            {
+                throw new ArgumentException("User identity must not be null or empty.", nameof(userIdentity));
+            }
+
+            using (var memoryStream = new MemoryStream())
+            {
+                // Create master key (ECDsa)
+                var masterBcpgKey = new ECDsaPublicBcpgKey(
+                    oid: masterPublicKey.PublicKeyParamSet,
+                    point: masterPublicKey.Q
+                );
+
+                var masterPublicPk = new PublicKeyPacket(
+                    algorithm: PublicKeyAlgorithmTag.ECDsa,
+                    time: KeyCreationTime,
+                    key: masterBcpgKey
+                );
+
+                // Encode master key
+                masterPublicPk.Encode(new BcpgOutputStream(memoryStream));
+
+                // Add user identity
+                var userIdPacket = new UserIdPacket(userIdentity);
+                userIdPacket.Encode(new BcpgOutputStream(memoryStream));
+
+                // Create encryption subkey (ECDH)
+                var encryptionBcpgKey = new ECDHPublicBcpgKey(
+                    oid: encryptionPublicKey.PublicKeyParamSet,
+                    point: encryptionPublicKey.Q,
+                    hashAlgorithm: DefaultHashAlgorithmTag,
+                    symmetricKeyAlgorithm: DefaultSymmetricKeyAlgorithmTag
+                );
+
+                var encryptionPublicPk = new PublicSubkeyPacket(
+                    algorithm: PublicKeyAlgorithmTag.ECDH,
+                    time: KeyCreationTime,
+                    key: encryptionBcpgKey
+                );
+
+                // Encode encryption subkey
+                encryptionPublicPk.Encode(new BcpgOutputStream(memoryStream));
+
+                // Reset stream position and create key ring
+                memoryStream.Position = 0;
+                return new PgpPublicKeyRing(memoryStream);
+            }
+        }
+
+        private static ECPublicKeyParameters GenerateEccPublicKey(PrivateDerivationKey derivationKey)
+        {
+            var keyPair = GenerateEccKeyPairFromPrivateKey(derivationKey);
+            var publicKeyPar = keyPair.Public as ECPublicKeyParameters;
+
+            return publicKeyPar;
+        }
+
+        private static AsymmetricCipherKeyPair GenerateEccKeyPairFromPrivateKey(PrivateDerivationKey derivationKey)
+        {
+            if (derivationKey == null)
+            {
+                throw new ArgumentNullException(nameof(derivationKey));
+            }
+
+            // Scalar must be 32 bytes long and not all zeros
+            if (derivationKey.Scalar == null || derivationKey.Scalar.Length != 32 || derivationKey.Scalar.All(b => b == 0))
+            {
+                throw new ArgumentException("Invalid private key scalar.", nameof(derivationKey));
+            }
+
             const string algorithm = "EC";
 
-            byte[] childKey = DerivationKeyFactory.DerivePrivateChildKey(derivationKey, keyIndex);
+            byte[] privateKeyBytes = derivationKey.Scalar;
 
             // curveOid - Curve object identifier
             DerObjectIdentifier curveOid = ECNamedCurveTable.GetOid(BitcoinEllipticCurveName);
             ECKeyGenerationParameters keyParams = new ECKeyGenerationParameters(curveOid, new SecureRandom());
 
-            ECPrivateKeyParameters privateKey = new ECPrivateKeyParameters(algorithm, new BigInteger(1, childKey), keyParams.PublicKeyParamSet);
+            ECPrivateKeyParameters privateKey = new ECPrivateKeyParameters(algorithm, new BigInteger(1, privateKeyBytes), keyParams.PublicKeyParamSet);
 
             ECMultiplier multiplier = new FixedPointCombMultiplier();
             ECPoint q = multiplier.Multiply(keyParams.DomainParameters.G, privateKey.D);
@@ -159,55 +388,45 @@ namespace TuviPgpLibImpl
             string password = string.Empty;
 
             PrivateDerivationKey accountKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, tag);
-            AsymmetricCipherKeyPair masterKeyPair = DeriveKeyPair(accountKey, keyIndex);
+            var childAccountKey = DerivationKeyFactory.DerivePrivateChildKey(accountKey, keyIndex);
+            AsymmetricCipherKeyPair masterKeyPair = GenerateEccKeyPairFromPrivateKey(childAccountKey);
             PgpKeyPair pgpMasterKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator certificationSubpacketGenerator = CreateSubpacketGenerator(KeyType.MasterKey, ExpirationTime);
 
-            PrivateDerivationKey encAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, KeyCreationReason.Encryption.ToString());
-            AsymmetricCipherKeyPair encSubKeyPair = DeriveKeyPair(encAccountKey, keyIndex);
+            PrivateDerivationKey encAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, EncryptionTag);
+            var childEncAccountKey = DerivationKeyFactory.DerivePrivateChildKey(encAccountKey, keyIndex);
+            AsymmetricCipherKeyPair encSubKeyPair = GenerateEccKeyPairFromPrivateKey(childEncAccountKey);
             PgpKeyPair encPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDH, encSubKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator encSubpacketGenerator = CreateSubpacketGenerator(KeyType.EncryptionKey, ExpirationTime);
 
-            PrivateDerivationKey signAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, KeyCreationReason.Signature.ToString());
-            AsymmetricCipherKeyPair signSubKeyPair = DeriveKeyPair(signAccountKey, keyIndex);
-            PgpKeyPair signPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDsa, signSubKeyPair, KeyCreationTime);
-            PgpSignatureSubpacketGenerator signSubpacketGenerator = CreateSubpacketGenerator(KeyType.SignatureKey, ExpirationTime);
-
-            Debug.Assert(encAccountKey != signAccountKey);
-
-            PgpKeyRingGenerator keyRingGenerator = new PgpKeyRingGenerator(
-                certificationLevel: PgpSignature.PositiveCertification,
-                masterKey: pgpMasterKeyPair,
-                id: userIdentity,
-                encAlgorithm: SymmetricKeyAlgorithmTag.Aes128,
-                rawPassPhrase: Encoding.UTF8.GetBytes(password),
-                useSha1: true,
-                hashedPackets: certificationSubpacketGenerator.Generate(),
-                unhashedPackets: null,
-                rand: new SecureRandom());
-
-            keyRingGenerator.AddSubKey(
-                keyPair: encPgpSubKeyPair,
-                hashedPackets: encSubpacketGenerator.Generate(),
-                unhashedPackets: null);
-
-            keyRingGenerator.AddSubKey(
-                keyPair: signPgpSubKeyPair,
-                hashedPackets: signSubpacketGenerator.Generate(),
-                unhashedPackets: null);
-
-            return keyRingGenerator;
+            return CreatePgpKeyRingGenerator(userIdentity, password, pgpMasterKeyPair, certificationSubpacketGenerator, encPgpSubKeyPair, encSubpacketGenerator);
         }
 
-        private PgpKeyRingGenerator CreateEllipticCurveKeyRingGeneratorForDec(MasterKey masterKey, string userIdentity, string tag)
+        private PgpKeyRingGenerator CreateEllipticCurveKeyRingGeneratorForTag(MasterKey masterKey, string userIdentity, string tag)
         {
-            int keyIndex = 0;
+            PrivateDerivationKey tagKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, tag);
+
+            return CreatePgpKeyRingGenerator(userIdentity, tagKey);
+        }
+
+        private PgpKeyRingGenerator CreateEllipticCurveKeyRingGeneratorForBip44(
+            MasterKey masterKey,
+            string userIdentity,
+            int coin,
+            int account,
+            int channel,
+            int index)
+        {
+            PrivateDerivationKey bip44Key = DerivationKeyFactory.CreatePrivateDerivationKeyBip44(masterKey, coin, account, channel, index);
+            
+            return CreatePgpKeyRingGenerator(userIdentity, bip44Key);
+        }
+
+        private PgpKeyRingGenerator CreatePgpKeyRingGenerator(string userIdentity, PrivateDerivationKey derivationKey)
+        {
             string password = string.Empty;
 
-            // HACK, we want to preserve old addresses
-            PrivateDerivationKey accountKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, tag);
-            PrivateDerivationKey decAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, KeyCreationReason.Encryption.ToString());
-            AsymmetricCipherKeyPair masterKeyPair = DeriveKeyPair(decAccountKey, keyIndex);
+            AsymmetricCipherKeyPair masterKeyPair = GenerateEccKeyPairFromPrivateKey(derivationKey);
 
             PgpKeyPair pgpMasterKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator certificationSubpacketGenerator = CreateSubpacketGenerator(KeyType.MasterKey, ExpirationTime);
@@ -215,14 +434,22 @@ namespace TuviPgpLibImpl
             PgpKeyPair encPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDH, masterKeyPair, KeyCreationTime);
             PgpSignatureSubpacketGenerator encSubpacketGenerator = CreateSubpacketGenerator(KeyType.EncryptionKey, ExpirationTime);
 
-            PgpKeyPair signPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
-            PgpSignatureSubpacketGenerator signSubpacketGenerator = CreateSubpacketGenerator(KeyType.SignatureKey, ExpirationTime);
+            return CreatePgpKeyRingGenerator(userIdentity, password, pgpMasterKeyPair, certificationSubpacketGenerator, encPgpSubKeyPair, encSubpacketGenerator);
+        }
 
+        private static PgpKeyRingGenerator CreatePgpKeyRingGenerator(
+            string userIdentity, 
+            string password, 
+            PgpKeyPair pgpMasterKeyPair, 
+            PgpSignatureSubpacketGenerator certificationSubpacketGenerator, 
+            PgpKeyPair encPgpSubKeyPair, 
+            PgpSignatureSubpacketGenerator encSubpacketGenerator)
+        {
             PgpKeyRingGenerator keyRingGenerator = new PgpKeyRingGenerator(
                 certificationLevel: PgpSignature.PositiveCertification,
                 masterKey: pgpMasterKeyPair,
                 id: userIdentity,
-                encAlgorithm: SymmetricKeyAlgorithmTag.Aes128,
+                encAlgorithm: DefaultSymmetricKeyAlgorithmTag,
                 rawPassPhrase: Encoding.UTF8.GetBytes(password),
                 useSha1: true,
                 hashedPackets: certificationSubpacketGenerator.Generate(),
@@ -232,11 +459,6 @@ namespace TuviPgpLibImpl
             keyRingGenerator.AddSubKey(
                 keyPair: encPgpSubKeyPair,
                 hashedPackets: encSubpacketGenerator.Generate(),
-                unhashedPackets: null);
-
-            keyRingGenerator.AddSubKey(
-                keyPair: signPgpSubKeyPair,
-                hashedPackets: signSubpacketGenerator.Generate(),
                 unhashedPackets: null);
 
             return keyRingGenerator;
@@ -249,8 +471,8 @@ namespace TuviPgpLibImpl
             {
                 if (algorithm == PublicKeyAlgorithmTag.ECDH)
                 {
-                    bcpgKey = new ECDHPublicBcpgKey(ecK.PublicKeyParamSet, ecK.Q, HashAlgorithmTag.Sha256,
-                        SymmetricKeyAlgorithmTag.Aes128);
+                    bcpgKey = new ECDHPublicBcpgKey(ecK.PublicKeyParamSet, ecK.Q, DefaultHashAlgorithmTag,
+                        DefaultSymmetricKeyAlgorithmTag);
                 }
                 else if (algorithm == PublicKeyAlgorithmTag.ECDsa)
                 {
@@ -280,10 +502,7 @@ namespace TuviPgpLibImpl
             switch (type)
             {
                 case KeyType.MasterKey:
-                    subpacketGenerator.SetKeyFlags(false, PgpKeyFlags.CanCertify);
-                    break;
-                case KeyType.SignatureKey:
-                    subpacketGenerator.SetKeyFlags(false, PgpKeyFlags.CanSign);
+                    subpacketGenerator.SetKeyFlags(false, PgpKeyFlags.CanCertify | PgpKeyFlags.CanSign);
                     break;
                 case KeyType.EncryptionKey:
                     subpacketGenerator.SetKeyFlags(false, PgpKeyFlags.CanEncryptCommunications | PgpKeyFlags.CanEncryptStorage);
@@ -302,65 +521,6 @@ namespace TuviPgpLibImpl
             subpacketGenerator.SetFeature(false, Org.BouncyCastle.Bcpg.Sig.Features.FEATURE_MODIFICATION_DETECTION);
 
             return subpacketGenerator;
-        }
-
-        /// <summary>
-        /// Return signing (not master) key of choosen mailbox
-        /// </summary>
-        /// <param name="mailbox">Mailbox.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Signing key.</returns>
-        public override PgpSecretKey GetSigningKey(MailboxAddress mailbox, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            if (mailbox == null)
-            {
-                throw new ArgumentNullException(nameof(mailbox));
-            }
-
-            foreach (PgpSecretKeyRing item in EnumerateSecretKeyRings(mailbox))
-            {
-                foreach (PgpSecretKey secretKey in item.GetSecretKeys())
-                {
-                    if (IsSigningNotMaster(secretKey))
-                    {
-                        return secretKey;
-                    }
-                }
-            }
-
-            throw new PrivateKeyNotFoundException(mailbox, "The private key could not be found.");
-        }
-
-        public override bool CanSign(MailboxAddress signer, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            if (signer == null)
-            {
-                throw new ArgumentNullException(nameof(signer));
-            }
-
-            foreach (PgpSecretKey item in EnumerateSecretKeys(signer))
-            {
-                if (IsSigningNotMaster(item))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private static bool IsSigningNotMaster(PgpSecretKey key)
-        {
-            if (key.IsSigningKey && !key.IsMasterKey)
-            {
-                PgpPublicKey publicKey = key.PublicKey;
-                if (!publicKey.IsRevoked() && !OpenPgpContext.IsExpired(publicKey))
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
     }
 }
