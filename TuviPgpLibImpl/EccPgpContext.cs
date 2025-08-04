@@ -77,7 +77,7 @@ namespace TuviPgpLibImpl
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
         /// <remarks>
         /// This method deterministically derives a master key, along with an encryption subkey, all from a single derivation key,
-        /// using a tag-based key derivation scheme. These three keys form a unified PGP key hierarchy.
+        /// using a tag-based key derivation scheme. These keys form a unified PGP key hierarchy.
         /// The <paramref name="userIdentity"/> parameter is used solely to assign the identity in the PGP key ring and does not influence key derivation.
         /// Key derivation is performed using the secp256k1 elliptic curve.
         /// </remarks>
@@ -119,7 +119,7 @@ namespace TuviPgpLibImpl
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="account"/>, <paramref name="channel"/>, or <paramref name="index"/> is negative.</exception>
         // <remarks>
         /// This method deterministically derives a master key, along with an encryption subkey, all from a single derivation key,
-        /// using a BIP44 key derivation scheme. These three keys form a unified PGP key hierarchy.
+        /// using a BIP44 key derivation scheme. These keys form a unified PGP key hierarchy.
         /// The derivation path follows BIP44: m/44'/coin'/account'/channel/index. 
         /// The <paramref name="userIdentity"/> parameter is used solely to assign the identity in the PGP key ring and does not influence key derivation.
         /// Key derivation is performed using the secp256k1 elliptic curve.
@@ -168,7 +168,7 @@ namespace TuviPgpLibImpl
         /// <param name="tag">The string tag used to customize key derivation. Must not be null.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
         /// This method deterministically derives unique keys: a master key, along with an encryption subkey,
-        /// using a tag-based key derivation scheme. These three keys form a unified PGP key hierarchy.
+        /// using a tag-based key derivation scheme. These keys form a unified PGP key hierarchy.
         /// The <paramref name="userIdentity"/> parameter is used solely to assign the identity in the PGP key ring and does not influence key derivation.
         /// Key derivation is performed using the secp256k1 elliptic curve.
         /// </remarks>
