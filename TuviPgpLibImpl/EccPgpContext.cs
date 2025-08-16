@@ -359,21 +359,19 @@ namespace TuviPgpLibImpl
                 throw new ArgumentNullException(nameof(derivationKey));
             }
 
-            // Scalar must be 32 bytes long and not all zeros
-            if (derivationKey.Scalar == null || derivationKey.Scalar.Length != 32 || derivationKey.Scalar.All(b => b == 0))
+            // Scalar must be 32 bytes long
+            if (derivationKey.Scalar.IsEmpty || derivationKey.Scalar.Length != 32)
             {
                 throw new ArgumentException("Invalid private key scalar.", nameof(derivationKey));
             }
 
             const string algorithm = "EC";
 
-            byte[] privateKeyBytes = derivationKey.Scalar;
-
             // curveOid - Curve object identifier
             DerObjectIdentifier curveOid = ECNamedCurveTable.GetOid(BitcoinEllipticCurveName);
             ECKeyGenerationParameters keyParams = new ECKeyGenerationParameters(curveOid, new SecureRandom());
 
-            ECPrivateKeyParameters privateKey = new ECPrivateKeyParameters(algorithm, new BigInteger(1, privateKeyBytes), keyParams.PublicKeyParamSet);
+            ECPrivateKeyParameters privateKey = new ECPrivateKeyParameters(algorithm, new BigInteger(1, derivationKey.Scalar.ToArray()), keyParams.PublicKeyParamSet);
 
             ECMultiplier multiplier = new FixedPointCombMultiplier();
             ECPoint q = multiplier.Multiply(keyParams.DomainParameters.G, privateKey.D);
