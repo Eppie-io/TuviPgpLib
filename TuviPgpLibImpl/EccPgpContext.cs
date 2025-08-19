@@ -237,9 +237,10 @@ namespace TuviPgpLibImpl
                 throw new ArgumentOutOfRangeException(nameof(index), "Address index must be non-negative.");
             }
 
-            var childKey = DerivationKeyFactory.CreatePrivateDerivationKeyBip44(masterKey, coin, account, channel, index);
-            
-            return GenerateEccPublicKey(childKey);
+            using (var childKey = DerivationKeyFactory.CreatePrivateDerivationKeyBip44(masterKey, coin, account, channel, index))
+            {
+                return GenerateEccPublicKey(childKey);
+            }
         }
 
         /// <summary>
@@ -266,8 +267,10 @@ namespace TuviPgpLibImpl
                 throw new ArgumentException(nameof(keyTag));
             }
 
-            var childKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, keyTag);
-            return GenerateEccPublicKey(childKey);
+            using (var childKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, keyTag))
+            {
+                return GenerateEccPublicKey(childKey);
+            }
         }
 
         /// <summary>
@@ -359,21 +362,19 @@ namespace TuviPgpLibImpl
                 throw new ArgumentNullException(nameof(derivationKey));
             }
 
-            // Scalar must be 32 bytes long and not all zeros
-            if (derivationKey.Scalar == null || derivationKey.Scalar.Length != 32 || derivationKey.Scalar.All(b => b == 0))
+            // Scalar must be 32 bytes long
+            if (derivationKey.Scalar.IsEmpty || derivationKey.Scalar.Length != 32)
             {
                 throw new ArgumentException("Invalid private key scalar.", nameof(derivationKey));
             }
 
             const string algorithm = "EC";
 
-            byte[] privateKeyBytes = derivationKey.Scalar;
-
             // curveOid - Curve object identifier
             DerObjectIdentifier curveOid = ECNamedCurveTable.GetOid(BitcoinEllipticCurveName);
             ECKeyGenerationParameters keyParams = new ECKeyGenerationParameters(curveOid, new SecureRandom());
 
-            ECPrivateKeyParameters privateKey = new ECPrivateKeyParameters(algorithm, new BigInteger(1, privateKeyBytes), keyParams.PublicKeyParamSet);
+            ECPrivateKeyParameters privateKey = new ECPrivateKeyParameters(algorithm, new BigInteger(1, derivationKey.Scalar.ToArray()), keyParams.PublicKeyParamSet);
 
             ECMultiplier multiplier = new FixedPointCombMultiplier();
             ECPoint q = multiplier.Multiply(keyParams.DomainParameters.G, privateKey.D);
@@ -387,26 +388,31 @@ namespace TuviPgpLibImpl
             int keyIndex = 0;
             string password = string.Empty;
 
-            PrivateDerivationKey accountKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, tag);
-            var childAccountKey = DerivationKeyFactory.DerivePrivateChildKey(accountKey, keyIndex);
-            AsymmetricCipherKeyPair masterKeyPair = GenerateEccKeyPairFromPrivateKey(childAccountKey);
-            PgpKeyPair pgpMasterKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
-            PgpSignatureSubpacketGenerator certificationSubpacketGenerator = CreateSubpacketGenerator(KeyType.MasterKey, ExpirationTime);
+            using (var accountKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, tag))
+            using (var childAccountKey = DerivationKeyFactory.DerivePrivateChildKey(accountKey, keyIndex))
+            {
+                AsymmetricCipherKeyPair masterKeyPair = GenerateEccKeyPairFromPrivateKey(childAccountKey);
+                PgpKeyPair pgpMasterKeyPair = new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, masterKeyPair, KeyCreationTime);
+                PgpSignatureSubpacketGenerator certificationSubpacketGenerator = CreateSubpacketGenerator(KeyType.MasterKey, ExpirationTime);
 
-            PrivateDerivationKey encAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, EncryptionTag);
-            var childEncAccountKey = DerivationKeyFactory.DerivePrivateChildKey(encAccountKey, keyIndex);
-            AsymmetricCipherKeyPair encSubKeyPair = GenerateEccKeyPairFromPrivateKey(childEncAccountKey);
-            PgpKeyPair encPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDH, encSubKeyPair, KeyCreationTime);
-            PgpSignatureSubpacketGenerator encSubpacketGenerator = CreateSubpacketGenerator(KeyType.EncryptionKey, ExpirationTime);
+                using (var encAccountKey = DerivationKeyFactory.CreatePrivateDerivationKey(accountKey, EncryptionTag))
+                using (var childEncAccountKey = DerivationKeyFactory.DerivePrivateChildKey(encAccountKey, keyIndex))
+                {
+                    AsymmetricCipherKeyPair encSubKeyPair = GenerateEccKeyPairFromPrivateKey(childEncAccountKey);
+                    PgpKeyPair encPgpSubKeyPair = CreatePgpSubkey(PublicKeyAlgorithmTag.ECDH, encSubKeyPair, KeyCreationTime);
+                    PgpSignatureSubpacketGenerator encSubpacketGenerator = CreateSubpacketGenerator(KeyType.EncryptionKey, ExpirationTime);
 
-            return CreatePgpKeyRingGenerator(userIdentity, password, pgpMasterKeyPair, certificationSubpacketGenerator, encPgpSubKeyPair, encSubpacketGenerator);
+                    return CreatePgpKeyRingGenerator(userIdentity, password, pgpMasterKeyPair, certificationSubpacketGenerator, encPgpSubKeyPair, encSubpacketGenerator);
+                }
+            }
         }
 
         private PgpKeyRingGenerator CreateEllipticCurveKeyRingGeneratorForTag(MasterKey masterKey, string userIdentity, string tag)
         {
-            PrivateDerivationKey tagKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, tag);
-
-            return CreatePgpKeyRingGenerator(userIdentity, tagKey);
+            using (var tagKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, tag))
+            {
+                return CreatePgpKeyRingGenerator(userIdentity, tagKey);
+            }
         }
 
         private PgpKeyRingGenerator CreateEllipticCurveKeyRingGeneratorForBip44(
@@ -417,9 +423,10 @@ namespace TuviPgpLibImpl
             int channel,
             int index)
         {
-            PrivateDerivationKey bip44Key = DerivationKeyFactory.CreatePrivateDerivationKeyBip44(masterKey, coin, account, channel, index);
-            
-            return CreatePgpKeyRingGenerator(userIdentity, bip44Key);
+            using (var bip44Key = DerivationKeyFactory.CreatePrivateDerivationKeyBip44(masterKey, coin, account, channel, index))
+            {
+                return CreatePgpKeyRingGenerator(userIdentity, bip44Key);
+            }
         }
 
         private PgpKeyRingGenerator CreatePgpKeyRingGenerator(string userIdentity, PrivateDerivationKey derivationKey)
