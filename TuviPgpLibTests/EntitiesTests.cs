@@ -50,11 +50,11 @@ namespace TuviPgpLibTests
                 Assert.That(publicKeyInfo.Algorithm, Is.EqualTo("ECDsa"));
                 Assert.That(publicKeyInfo.BitStrength, Is.EqualTo(256));
                 Assert.That(publicKeyInfo.CreationTime, Is.EqualTo(new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)));
-                Assert.That(publicKeyInfo.Fingerprint, Is.EqualTo("8F90CB850F69B6A614C879CE37A8DD28527585C4"));
+                Assert.That(publicKeyInfo.Fingerprint, Is.EqualTo("23914ADB041AB2B2F90E5A5CCD046E65F1CB8D61"));
                 Assert.That(publicKeyInfo.IsEncryptionKey, Is.False);
                 Assert.That(publicKeyInfo.IsMasterKey, Is.True);
                 Assert.That(publicKeyInfo.IsRevoked, Is.False);
-                Assert.That(publicKeyInfo.KeyId, Is.EqualTo(4010698633425290692));
+                Assert.That(publicKeyInfo.KeyId, Is.EqualTo(-3673690011900080799));
                 Assert.That(publicKeyInfo.UserIdentity, Is.EqualTo(TestData.GetAccount().GetPgpIdentity()));
                 Assert.That(publicKeyInfo.ValidSeconds, Is.EqualTo(0));
                 Assert.That(publicKeyInfo.IsNeverExpires(), Is.True);
