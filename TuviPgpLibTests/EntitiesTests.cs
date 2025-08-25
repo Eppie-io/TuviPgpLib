@@ -56,7 +56,7 @@ namespace TuviPgpLibTests
                 Assert.That(publicKeyInfo.IsRevoked, Is.False);
                 Assert.That(publicKeyInfo.KeyId, Is.EqualTo(-3673690011900080799));
                 Assert.That(publicKeyInfo.UserIdentity, Is.EqualTo(TestData.GetAccount().GetPgpIdentity()));
-                Assert.That(publicKeyInfo.ValidSeconds, Is.EqualTo(0));
+                Assert.That(publicKeyInfo.ValidSeconds, Is.Zero);
                 Assert.That(publicKeyInfo.IsNeverExpires(), Is.True);
             }
         }
