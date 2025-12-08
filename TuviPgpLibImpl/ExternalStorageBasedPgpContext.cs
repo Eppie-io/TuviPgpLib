@@ -312,7 +312,9 @@ namespace TuviPgpLibImpl
                     }
                 }
 
-                // Add new user IDs (without signatures, as our keys are created without signatures)
+                // Add new user IDs without importing any associated signatures.
+                // This is intentional: our application creates and manages user IDs without signatures,
+                // and any signatures present in the imported keyring for these user IDs are intentionally discarded.
                 foreach (var newUserId in newUserIds)
                 {
                     var userIdPacket = new UserIdPacket(newUserId);
