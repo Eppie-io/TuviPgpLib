@@ -231,6 +231,9 @@ namespace TuviPgpLibImpl
         /// <summary>
         /// Tries to find an existing public key ring by key ID.
         /// </summary>
+        /// <returns>
+        /// The <see cref="PgpPublicKeyRing"/> if found; otherwise, <c>null</c> if no key ring is found for the given key ID.
+        /// </returns>
         private PgpPublicKeyRing TryGetExistingPublicKeyRing(long keyId)
         {
             try
