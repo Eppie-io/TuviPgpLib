@@ -202,6 +202,9 @@ namespace TuviPgpLibImpl
         /// </summary>
         /// <param name="keyring">The public key ring to import.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
+        /// <exception cref="PublicKeyAlreadyExistException">
+        /// Thrown when importing a keyring with the same KeyId and identical user IDs.
+        /// </exception>
         public void ImportOrMerge(PgpPublicKeyRing keyring, CancellationToken cancellationToken = default)
         {
             if (keyring is null)
