@@ -244,6 +244,10 @@ namespace TuviPgpLibImpl
             {
                 return null;
             }
+            catch (ArgumentException)
+            {
+                return null;
+            }
         }
 
         /// <summary>
