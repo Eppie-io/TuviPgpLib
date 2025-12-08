@@ -286,8 +286,8 @@ namespace TuviPgpLibImpl
 
             // Build a new keyring by encoding existing packets and adding new UserIdPackets
             using (var memoryStream = new MemoryStream())
+            using (var bcpgOut = new BcpgOutputStream(memoryStream))
             {
-                var bcpgOut = new BcpgOutputStream(memoryStream);
 
                 // Encode master public key
                 existingMasterKey.PublicKeyPacket.Encode(bcpgOut);
