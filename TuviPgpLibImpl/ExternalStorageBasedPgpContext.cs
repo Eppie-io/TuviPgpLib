@@ -20,6 +20,7 @@ using Org.BouncyCastle.Bcpg.OpenPgp;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TuviPgpLib;
@@ -254,91 +255,69 @@ namespace TuviPgpLibImpl
         /// Merges two public key rings by combining their user IDs.
         /// Creates a new keyring with all user IDs from both keyrings.
         /// </summary>
+        /// <remarks>
+        /// This method assumes both key rings have the same master key and identical subkey structure.
+        /// Only user IDs are merged; subkeys from <paramref name="newKeyRing"/> are intentionally ignored
+        /// since they should be identical to the subkeys in <paramref name="existingKeyRing"/>.
+        /// </remarks>
+        /// <exception cref="PublicKeyAlreadyExistException">
+        /// Thrown when the new keyring contains no new user IDs (all user IDs already exist in the existing keyring).
+        /// </exception>
         private static PgpPublicKeyRing MergePublicKeyRings(PgpPublicKeyRing existingKeyRing, PgpPublicKeyRing newKeyRing)
         {
-            // Collect existing user IDs
             var existingMasterKey = existingKeyRing.GetPublicKey();
-            var existingUserIds = new HashSet<string>();
-            foreach (var userId in existingMasterKey.GetUserIds())
-            {
-                if (userId is string userIdString)
-                {
-                    existingUserIds.Add(userIdString);
-                }
-            }
-
-            // Get new user IDs that don't exist
             var newMasterKey = newKeyRing.GetPublicKey();
-            var newUserIds = new List<string>();
-            foreach (var userId in newMasterKey.GetUserIds())
+
+            // Validate that both keyrings have the same master key
+            if (existingMasterKey.KeyId != newMasterKey.KeyId)
             {
-                if (userId is string userIdString && !existingUserIds.Contains(userIdString))
-                {
-                    newUserIds.Add(userIdString);
-                }
+                throw new ArgumentException(
+                    $"Cannot merge key rings with different master key IDs: {existingMasterKey.KeyId} vs {newMasterKey.KeyId}",
+                    nameof(newKeyRing));
             }
 
-            // If no new user IDs, return existing keyring
+            var existingUserIds = new HashSet<string>(existingMasterKey.GetUserIds().OfType<string>());
+
+            // Get new user IDs that don't exist in the existing keyring
+            var newUserIds = newMasterKey.GetUserIds()
+                .OfType<string>()
+                .Where(userId => !existingUserIds.Contains(userId))
+                .ToList();
+
+            // If no new user IDs, throw exception - the keyring already exists with these identities
             if (newUserIds.Count == 0)
             {
-                return existingKeyRing;
+                var existingIdentities = string.Join(", ", existingUserIds);
+                throw new PublicKeyAlreadyExistException(
+                    $"A key ring with KeyId {existingMasterKey.KeyId:X16} already exists with the same user identities: {existingIdentities}");
             }
 
             // Build a new keyring by encoding existing packets and adding new UserIdPackets
             using (var memoryStream = new MemoryStream())
             using (var bcpgOut = new BcpgOutputStream(memoryStream))
             {
-
-                // Encode master public key
                 existingMasterKey.PublicKeyPacket.Encode(bcpgOut);
 
                 // Encode existing user IDs with their signatures
-                foreach (var userId in existingMasterKey.GetUserIds())
+                foreach (var userIdString in existingUserIds)
                 {
-                    if (userId is string userIdString)
-                    {
-                        var userIdPacket = new UserIdPacket(userIdString);
-                        userIdPacket.Encode(bcpgOut);
-
-                        // Copy signatures for this user ID
-                        var sigs = existingMasterKey.GetSignaturesForId(userIdString);
-                        if (sigs != null)
-                        {
-                            foreach (PgpSignature sig in sigs)
-                            {
-                                sig.Encode(bcpgOut);
-                            }
-                        }
-                    }
+                    EncodeUserId(bcpgOut, userIdString, existingMasterKey.GetSignaturesForId(userIdString)?.Cast<PgpSignature>());
                 }
 
-                // Add new user IDs without importing any associated signatures.
-                // This is intentional: our application creates and manages user IDs without signatures,
-                // and any signatures present in the imported keyring for these user IDs are intentionally discarded.
+                // Add new user IDs without signatures (intentional - see method docs)
                 foreach (var newUserId in newUserIds)
                 {
-                    var userIdPacket = new UserIdPacket(newUserId);
-                    userIdPacket.Encode(bcpgOut);
+                    EncodeUserId(bcpgOut, newUserId, signatures: null);
                 }
 
-                // Encode subkeys
-                foreach (PgpPublicKey key in existingKeyRing.GetPublicKeys())
+                // Encode subkeys from existing keyring (subkeys should be identical in both keyrings)
+                foreach (var key in existingKeyRing.GetPublicKeys().Cast<PgpPublicKey>().Where(k => !k.IsMasterKey))
                 {
-                    if (key.IsMasterKey)
-                    {
-                        continue;
-                    }
-
                     key.PublicKeyPacket.Encode(bcpgOut);
 
-                    // Copy signatures for this subkey
-                    var keySigs = key.GetSignatures();
-                    if (keySigs != null)
+                    foreach (var sig in key.GetSignatures()?.Cast<PgpSignature>() ?? Enumerable.Empty<PgpSignature>())
                     {
-                        foreach (PgpSignature sig in keySigs)
-                        {
-                            sig.Encode(bcpgOut);
-                        }
+                        sig.Encode(bcpgOut);
                     }
                 }
 
@@ -349,5 +328,17 @@ namespace TuviPgpLibImpl
             }
         }
 
+        /// <summary>
+        /// Encodes a user ID packet and its optional signatures to the output stream.
+        /// </summary>
+        private static void EncodeUserId(BcpgOutputStream bcpgOut, string userId, IEnumerable<PgpSignature> signatures)
+        {
+            new UserIdPacket(userId).Encode(bcpgOut);
+
+            foreach (var sig in signatures ?? Enumerable.Empty<PgpSignature>())
+            {
+                sig.Encode(bcpgOut);
+            }
+        }
     }
 }
