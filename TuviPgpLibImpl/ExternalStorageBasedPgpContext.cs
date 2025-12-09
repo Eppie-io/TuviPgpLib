@@ -213,7 +213,7 @@ namespace TuviPgpLibImpl
             }
 
             var masterKey = keyring.GetPublicKey();
-            var existingKeyRing = TryGetExistingPublicKeyRing(masterKey.KeyId);
+            var existingKeyRing = GetExistingPublicKeyRing(masterKey.KeyId);
 
             if (existingKeyRing != null)
             {
@@ -238,7 +238,7 @@ namespace TuviPgpLibImpl
         /// <returns>
         /// The <see cref="PgpPublicKeyRing"/> if found; otherwise, <c>null</c> if no key ring is found for the given key ID.
         /// </returns>
-        private PgpPublicKeyRing TryGetExistingPublicKeyRing(long keyId)
+        private PgpPublicKeyRing GetExistingPublicKeyRing(long keyId)
         {
             try
             {
