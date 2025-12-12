@@ -14,10 +14,13 @@
 //   limitations under the License.
 ///////////////////////////////////////////////////////////////////////////////
 
-using KeyDerivation.Keys;
 using MimeKit.Cryptography;
+using Org.BouncyCastle.Bcpg;
 using Org.BouncyCastle.Bcpg.OpenPgp;
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TuviPgpLib;
@@ -36,7 +39,7 @@ namespace TuviPgpLibImpl
 
         protected ExternalStorageBasedPgpContext(IKeyStorage storage) : base()
         {
-            if (storage == null)
+            if (storage is null)
             {
                 throw new ArgumentNullException(nameof(storage), $"PGP keys storage parameter is not set.");
             }
@@ -54,7 +57,7 @@ namespace TuviPgpLibImpl
         {
             var publicKeys = await KeyStorage.GetPgpPublicKeysAsync().ConfigureAwait(false);
 
-            if (publicKeys?.Data == null)
+            if (publicKeys?.Data is null)
             {
                 PublicKeyRingBundle = CreateEmptyPgpPublicKeyRingBundle();
             }
@@ -68,7 +71,7 @@ namespace TuviPgpLibImpl
         {
             var secretKeys = await KeyStorage.GetPgpSecretKeysAsync().ConfigureAwait(false);
 
-            if (secretKeys?.Data == null)
+            if (secretKeys?.Data is null)
             {
                 SecretKeyRingBundle = CreateEmptyPgpSecretKeyRingBundle();
             }
@@ -110,7 +113,7 @@ namespace TuviPgpLibImpl
 
         public override void Import(PgpPublicKeyRing keyring, CancellationToken cancellationToken = default)
         {
-            if (keyring == null)
+            if (keyring is null)
             {
                 throw new ArgumentNullException(nameof(keyring));
             }
@@ -142,7 +145,7 @@ namespace TuviPgpLibImpl
 
         public override void Import(PgpSecretKeyRing keyring, CancellationToken cancellationToken = default)
         {
-            if (keyring == null)
+            if (keyring is null)
             {
                 throw new ArgumentNullException(nameof(keyring));
             }
@@ -153,7 +156,7 @@ namespace TuviPgpLibImpl
 
         public override void Import(PgpSecretKeyRingBundle bundle, CancellationToken cancellationToken = default)
         {
-            if (bundle == null)
+            if (bundle is null)
             {
                 throw new ArgumentNullException(nameof(bundle));
             }
@@ -174,7 +177,7 @@ namespace TuviPgpLibImpl
 
         public override void Delete(PgpPublicKeyRing keyring)
         {
-            if (keyring == null)
+            if (keyring is null)
             {
                 throw new ArgumentNullException(nameof(keyring));
             }
@@ -185,13 +188,160 @@ namespace TuviPgpLibImpl
 
         public override void Delete(PgpSecretKeyRing keyring)
         {
-            if (keyring == null)
+            if (keyring is null)
             {
                 throw new ArgumentNullException(nameof(keyring));
             }
 
             SecretKeyRingBundle = PgpSecretKeyRingBundle.RemoveSecretKeyRing(SecretKeyRingBundle, keyring);
             SaveSecretKeyRingBundle();
+        }
+
+        /// <summary>
+        /// Imports a public key ring, merging user IDs if a key with the same KeyId already exists.
+        /// </summary>
+        /// <param name="keyring">The public key ring to import.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <exception cref="PublicKeyAlreadyExistException">
+        /// Thrown when importing a keyring with the same KeyId and identical user IDs.
+        /// </exception>
+        public void ImportOrMerge(PgpPublicKeyRing keyring, CancellationToken cancellationToken = default)
+        {
+            if (keyring is null)
+            {
+                throw new ArgumentNullException(nameof(keyring));
+            }
+
+            var masterKey = keyring.GetPublicKey();
+            var existingKeyRing = GetExistingPublicKeyRing(masterKey.KeyId);
+
+            if (existingKeyRing != null)
+            {
+                // Key with this KeyId already exists - merge user IDs from new keyring into existing one
+                var mergedKeyRing = MergePublicKeyRings(existingKeyRing, keyring);
+
+                // Remove old keyring and add merged one
+                PublicKeyRingBundle = PgpPublicKeyRingBundle.RemovePublicKeyRing(PublicKeyRingBundle, existingKeyRing);
+                PublicKeyRingBundle = PgpPublicKeyRingBundle.AddPublicKeyRing(PublicKeyRingBundle, mergedKeyRing);
+            }
+            else
+            {
+                PublicKeyRingBundle = PgpPublicKeyRingBundle.AddPublicKeyRing(PublicKeyRingBundle, keyring);
+            }
+
+            SavePublicKeyRingBundle();
+        }
+
+        /// <summary>
+        /// Tries to find an existing public key ring by key ID.
+        /// </summary>
+        /// <returns>
+        /// The <see cref="PgpPublicKeyRing"/> if found; otherwise, <c>null</c> if no key ring is found for the given key ID.
+        /// </returns>
+        private PgpPublicKeyRing GetExistingPublicKeyRing(long keyId)
+        {
+            try
+            {
+                return PublicKeyRingBundle.GetPublicKeyRing(keyId);
+            }
+            catch (PgpException)
+            {
+                return null;
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Merges two public key rings by combining their user IDs.
+        /// Creates a new keyring with all user IDs from both keyrings.
+        /// </summary>
+        /// <remarks>
+        /// This method assumes both key rings have the same master key and identical subkey structure.
+        /// Only user IDs are merged; subkeys from <paramref name="newKeyRing"/> are intentionally ignored
+        /// since they should be identical to the subkeys in <paramref name="existingKeyRing"/>.
+        /// </remarks>
+        /// <exception cref="PublicKeyAlreadyExistException">
+        /// Thrown when the new keyring contains no new user IDs (all user IDs already exist in the existing keyring).
+        /// </exception>
+        private static PgpPublicKeyRing MergePublicKeyRings(PgpPublicKeyRing existingKeyRing, PgpPublicKeyRing newKeyRing)
+        {
+            var existingMasterKey = existingKeyRing.GetPublicKey();
+            var newMasterKey = newKeyRing.GetPublicKey();
+
+            // Validate that both keyrings have the same master key
+            if (existingMasterKey.KeyId != newMasterKey.KeyId)
+            {
+                throw new ArgumentException(
+                    $"Cannot merge key rings with different master key IDs: {existingMasterKey.KeyId} vs {newMasterKey.KeyId}",
+                    nameof(newKeyRing));
+            }
+
+            var existingUserIds = new HashSet<string>(existingMasterKey.GetUserIds().OfType<string>());
+
+            // Get new user IDs that don't exist in the existing keyring
+            var newUserIds = newMasterKey.GetUserIds()
+                .OfType<string>()
+                .Where(userId => !existingUserIds.Contains(userId))
+                .ToList();
+
+            // If no new user IDs, throw exception - the keyring already exists with these identities
+            if (newUserIds.Count == 0)
+            {
+                var existingIdentities = string.Join(", ", existingUserIds);
+                throw new PublicKeyAlreadyExistException(
+                    $"A key ring with KeyId {existingMasterKey.KeyId:X16} already exists with the same user identities: {existingIdentities}");
+            }
+
+            // Build a new keyring by encoding existing packets and adding new UserIdPackets
+            using (var memoryStream = new MemoryStream())
+            using (var bcpgOut = new BcpgOutputStream(memoryStream))
+            {
+                existingMasterKey.PublicKeyPacket.Encode(bcpgOut);
+
+                // Encode existing user IDs with their signatures
+                foreach (var userIdString in existingUserIds)
+                {
+                    EncodeUserId(bcpgOut, userIdString, existingMasterKey.GetSignaturesForId(userIdString)?.Cast<PgpSignature>());
+                }
+
+                // Add new user IDs without signatures (intentional - see method docs)
+                foreach (var newUserId in newUserIds)
+                {
+                    EncodeUserId(bcpgOut, newUserId, signatures: null);
+                }
+
+                // Encode subkeys from existing keyring (subkeys should be identical in both keyrings)
+                foreach (var key in existingKeyRing.GetPublicKeys().Cast<PgpPublicKey>().Where(k => !k.IsMasterKey))
+                {
+                    key.PublicKeyPacket.Encode(bcpgOut);
+
+                    foreach (var sig in key.GetSignatures()?.Cast<PgpSignature>() ?? Enumerable.Empty<PgpSignature>())
+                    {
+                        sig.Encode(bcpgOut);
+                    }
+                }
+
+                bcpgOut.Flush();
+                memoryStream.Position = 0;
+
+                return new PgpPublicKeyRing(memoryStream);
+            }
+        }
+
+        /// <summary>
+        /// Encodes a user ID packet and its optional signatures to the output stream.
+        /// </summary>
+        private static void EncodeUserId(BcpgOutputStream bcpgOut, string userId, IEnumerable<PgpSignature> signatures)
+        {
+            new UserIdPacket(userId).Encode(bcpgOut);
+
+            foreach (var sig in signatures ?? Enumerable.Empty<PgpSignature>())
+            {
+                sig.Encode(bcpgOut);
+            }
         }
     }
 }

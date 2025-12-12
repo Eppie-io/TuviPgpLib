@@ -21,6 +21,7 @@ using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Security;
 using System.Globalization;
+using TuviPgpLib.Entities;
 
 namespace TuviPgpLibTests
 {
@@ -567,7 +568,7 @@ namespace TuviPgpLibTests
 
 
         private const string BitcoinEllipticCurveName = "secp256k1";
-        
+
         private static ECPublicKeyParameters CreateTestPublicKey()
         {
             // Create a test public key on the secp256k1 curve
@@ -674,5 +675,402 @@ namespace TuviPgpLibTests
             Assert.That(hasEncryptionSubkey, Is.True, "Encryption subkey (ECDH) is missing.");
             Assert.That(hasSigningKey, Is.True, "Signing subkey (ECDSA) is missing.");
         }
+
+        #region ImportOrMerge Tests
+
+        [Test]
+        public async Task ImportOrMergeNullKeyRingThrowsArgumentNullException()
+        {
+            // Arrange
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(
+                () => ctx.ImportOrMerge(null),
+                "Should throw ArgumentNullException for null keyring");
+        }
+
+        [Test]
+        public async Task ImportOrMergeNewKeyImportsSuccessfully()
+        {
+            // Arrange
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            var masterKey = CreateTestPublicKey();
+            var encryptionKey = CreateTestPublicKey();
+            string userIdentity = "newuser@example.com";
+            var keyRing = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity);
+
+            // Act
+            ctx.ImportOrMerge(keyRing);
+
+            // Assert
+            var importedKeys = ctx.EnumeratePublicKeyRings().ToList();
+            Assert.That(importedKeys.Count, Is.EqualTo(1), "Should have exactly one key ring after import");
+            var importedKeyRing = importedKeys.First();
+            var userIds = importedKeyRing.GetPublicKey().GetUserIds().Cast<string>().ToList();
+            Assert.That(userIds, Contains.Item(userIdentity), "Imported key ring should contain the user identity");
+        }
+
+        [Test]
+        public async Task ImportOrMergeSameKeyIdMergesUserIds()
+        {
+            // Arrange
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            var masterKey = CreateTestPublicKey();
+            var encryptionKey = CreateTestPublicKey();
+            string userIdentity1 = "user1@example.com";
+            string userIdentity2 = "user2@example.com";
+
+            var keyRing1 = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity1);
+            var keyRing2 = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity2);
+
+            // Act
+            ctx.ImportOrMerge(keyRing1);
+            ctx.ImportOrMerge(keyRing2);
+
+            // Assert
+            var importedKeys = ctx.EnumeratePublicKeyRings().ToList();
+            Assert.That(importedKeys.Count, Is.EqualTo(1), "Should have exactly one key ring after merge");
+            var mergedKeyRing = importedKeys.First();
+            var userIds = mergedKeyRing.GetPublicKey().GetUserIds().Cast<string>().ToList();
+            Assert.That(userIds, Has.Count.EqualTo(2), "Merged key ring should have two user IDs");
+            Assert.That(userIds, Contains.Item(userIdentity1), "Merged key ring should contain first user identity");
+            Assert.That(userIds, Contains.Item(userIdentity2), "Merged key ring should contain second user identity");
+        }
+
+        [Test]
+        public async Task ImportOrMergeSameUserIdThrowsPublicKeyAlreadyExistException()
+        {
+            // Arrange
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            var masterKey = CreateTestPublicKey();
+            var encryptionKey = CreateTestPublicKey();
+            string userIdentity = "sameuser@example.com";
+
+            var keyRing1 = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity);
+            var keyRing2 = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity);
+
+            // Act - import first keyring
+            ctx.ImportOrMerge(keyRing1);
+
+            // Assert - second import should throw because user ID already exists
+            Assert.Throws<PublicKeyAlreadyExistException>(
+                () => ctx.ImportOrMerge(keyRing2),
+                "Should throw PublicKeyAlreadyExistException when importing keyring with same user identity");
+
+            // Verify only one keyring exists
+            var importedKeys = ctx.EnumeratePublicKeyRings().ToList();
+            Assert.That(importedKeys.Count, Is.EqualTo(1), "Should have exactly one key ring");
+            var userIds = importedKeys.First().GetPublicKey().GetUserIds().Cast<string>().ToList();
+            Assert.That(userIds, Has.Count.EqualTo(1), "Should have exactly one user ID");
+        }
+
+        [Test]
+        public async Task ImportOrMergeMultipleUserIdsMergesCorrectly()
+        {
+            // Arrange
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            var masterKey = CreateTestPublicKey();
+            var encryptionKey = CreateTestPublicKey();
+            string userIdentity1 = "user1@example.com";
+            string userIdentity2 = "user2@example.com";
+            string userIdentity3 = "user3@example.com";
+
+            var keyRing1 = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity1);
+            var keyRing2 = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity2);
+            var keyRing3 = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity3);
+
+            // Act
+            ctx.ImportOrMerge(keyRing1);
+            ctx.ImportOrMerge(keyRing2);
+            ctx.ImportOrMerge(keyRing3);
+
+            // Assert
+            var importedKeys = ctx.EnumeratePublicKeyRings().ToList();
+            Assert.That(importedKeys.Count, Is.EqualTo(1), "Should have exactly one key ring after merging");
+            var mergedKeyRing = importedKeys.First();
+            var userIds = mergedKeyRing.GetPublicKey().GetUserIds().Cast<string>().ToList();
+            Assert.That(userIds, Has.Count.EqualTo(3), "Merged key ring should have three user IDs");
+            Assert.That(userIds, Contains.Item(userIdentity1), "Should contain first user identity");
+            Assert.That(userIds, Contains.Item(userIdentity2), "Should contain second user identity");
+            Assert.That(userIds, Contains.Item(userIdentity3), "Should contain third user identity");
+        }
+
+        [Test]
+        public async Task ImportOrMergeDifferentKeyIdsImportsSeparately()
+        {
+            // Arrange
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            var masterKey1 = CreateTestPublicKey();
+            var encryptionKey1 = CreateTestPublicKey();
+            var masterKey2 = CreateTestPublicKey();
+            var encryptionKey2 = CreateTestPublicKey();
+            string userIdentity1 = "user1@example.com";
+            string userIdentity2 = "user2@example.com";
+
+            var keyRing1 = EccPgpContext.CreatePgpPublicKeyRing(masterKey1, encryptionKey1, userIdentity1);
+            var keyRing2 = EccPgpContext.CreatePgpPublicKeyRing(masterKey2, encryptionKey2, userIdentity2);
+
+            // Act
+            ctx.ImportOrMerge(keyRing1);
+            ctx.ImportOrMerge(keyRing2);
+
+            // Assert
+            var importedKeys = ctx.EnumeratePublicKeyRings().ToList();
+            Assert.That(importedKeys.Count, Is.EqualTo(2), "Should have two separate key rings for different KeyIds");
+        }
+
+        [Test]
+        public async Task ImportOrMergePreservesKeyId()
+        {
+            // Arrange
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            var masterKey = CreateTestPublicKey();
+            var encryptionKey = CreateTestPublicKey();
+            string userIdentity1 = "user1@example.com";
+            string userIdentity2 = "user2@example.com";
+
+            var keyRing1 = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity1);
+            var originalKeyId = keyRing1.GetPublicKey().KeyId;
+
+            var keyRing2 = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity2);
+
+            // Act
+            ctx.ImportOrMerge(keyRing1);
+            ctx.ImportOrMerge(keyRing2);
+
+            // Assert
+            var mergedKeyRing = ctx.EnumeratePublicKeyRings().First();
+            Assert.That(mergedKeyRing.GetPublicKey().KeyId, Is.EqualTo(originalKeyId), "KeyId should be preserved after merge");
+        }
+
+        [Test]
+        public async Task ImportOrMergePreservesSubkeys()
+        {
+            // Arrange
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            var masterKey = CreateTestPublicKey();
+            var encryptionKey = CreateTestPublicKey();
+            string userIdentity1 = "user1@example.com";
+            string userIdentity2 = "user2@example.com";
+
+            var keyRing1 = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity1);
+            var originalSubkeyCount = keyRing1.GetPublicKeys().Cast<PgpPublicKey>().Count();
+
+            var keyRing2 = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity2);
+
+            // Act
+            ctx.ImportOrMerge(keyRing1);
+            ctx.ImportOrMerge(keyRing2);
+
+            // Assert
+            var mergedKeyRing = ctx.EnumeratePublicKeyRings().First();
+            var mergedSubkeyCount = mergedKeyRing.GetPublicKeys().Cast<PgpPublicKey>().Count();
+            Assert.That(mergedSubkeyCount, Is.EqualTo(originalSubkeyCount), "Subkey count should be preserved after merge");
+        }
+
+        [Test]
+        public async Task ImportOrMergeWithDerivedKeysWorks()
+        {
+            // Arrange
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            string userIdentity1 = TestData.GetAccount().GetPgpIdentity();
+            string userIdentity2 = TestData.GetSecondAccount().GetPgpIdentity();
+            string derivationTag = userIdentity1; // Same tag to get same key
+
+            // Generate key for first identity
+            ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, userIdentity1, derivationTag);
+            var originalKeyRing = ctx.EnumeratePublicKeyRings().First();
+            var originalKeyId = originalKeyRing.GetPublicKey().KeyId;
+
+            // Create a second key ring with the same derived key but different user identity
+            // Use a separate context to generate the second keyring
+            using EccPgpContext ctx2 = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            ctx2.GeneratePgpKeysByTagOld(TestData.MasterKey, userIdentity2, derivationTag);
+            var secondKeyRing = ctx2.EnumeratePublicKeyRings().First();
+
+            // Verify both keyrings have the same KeyId (derived from the same tag)
+            Assert.That(secondKeyRing.GetPublicKey().KeyId, Is.EqualTo(originalKeyId),
+                "Both keyrings should have the same KeyId when derived from the same tag");
+
+            // Act - merge the second keyring into the first context
+            ctx.ImportOrMerge(secondKeyRing);
+
+            // Assert
+            var mergedKeys = ctx.EnumeratePublicKeyRings().ToList();
+            Assert.That(mergedKeys.Count, Is.EqualTo(1), "Should still have one key ring after merge");
+
+            var mergedKeyRing = mergedKeys.First();
+            Assert.That(mergedKeyRing.GetPublicKey().KeyId, Is.EqualTo(originalKeyId),
+                "KeyId should be preserved after merge");
+
+            var userIds = mergedKeyRing.GetPublicKey().GetUserIds().Cast<string>().ToList();
+            Assert.That(userIds, Has.Count.EqualTo(2), "Merged key ring should have two user IDs");
+            Assert.That(userIds, Contains.Item(userIdentity1), "Should contain first user identity");
+            Assert.That(userIds, Contains.Item(userIdentity2), "Should contain second user identity");
+        }
+
+        [Test]
+        public async Task ImportOrMergePreservesFingerprint()
+        {
+            // Arrange
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            var masterKey = CreateTestPublicKey();
+            var encryptionKey = CreateTestPublicKey();
+            string userIdentity1 = "user1@example.com";
+            string userIdentity2 = "user2@example.com";
+
+            var keyRing1 = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity1);
+            var originalFingerprint = keyRing1.GetPublicKey().GetFingerprint();
+
+            var keyRing2 = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity2);
+
+            // Act
+            ctx.ImportOrMerge(keyRing1);
+            ctx.ImportOrMerge(keyRing2);
+
+            // Assert
+            var mergedKeyRing = ctx.EnumeratePublicKeyRings().First();
+            var mergedFingerprint = mergedKeyRing.GetPublicKey().GetFingerprint();
+            Assert.That(mergedFingerprint, Is.EqualTo(originalFingerprint), "Fingerprint should be preserved after merge");
+        }
+
+        [Test]
+        public async Task ImportOrMergeMixedScenarioWorksCorrectly()
+        {
+            // Arrange: Import multiple keys, some with same KeyId, some different
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            var masterKey1 = CreateTestPublicKey();
+            var encryptionKey1 = CreateTestPublicKey();
+            var masterKey2 = CreateTestPublicKey();
+            var encryptionKey2 = CreateTestPublicKey();
+
+            string userIdentity1a = "user1a@example.com";
+            string userIdentity1b = "user1b@example.com";
+            string userIdentity2 = "user2@example.com";
+
+            var keyRing1a = EccPgpContext.CreatePgpPublicKeyRing(masterKey1, encryptionKey1, userIdentity1a);
+            var keyRing1b = EccPgpContext.CreatePgpPublicKeyRing(masterKey1, encryptionKey1, userIdentity1b);
+            var keyRing2 = EccPgpContext.CreatePgpPublicKeyRing(masterKey2, encryptionKey2, userIdentity2);
+
+            // Act
+            ctx.ImportOrMerge(keyRing1a);
+            ctx.ImportOrMerge(keyRing2);
+            ctx.ImportOrMerge(keyRing1b);
+
+            // Assert
+            var importedKeys = ctx.EnumeratePublicKeyRings().ToList();
+            Assert.That(importedKeys.Count, Is.EqualTo(2), "Should have two key rings (one merged, one separate)");
+
+            // Find the merged key ring (the one with two user IDs)
+            var mergedKeyRing = importedKeys.FirstOrDefault(kr => kr.GetPublicKey().GetUserIds().Cast<string>().Count() == 2);
+            Assert.That(mergedKeyRing, Is.Not.Null, "Should have a merged key ring with two user IDs");
+            var mergedUserIds = mergedKeyRing.GetPublicKey().GetUserIds().Cast<string>().ToList();
+            Assert.That(mergedUserIds, Contains.Item(userIdentity1a), "Merged ring should contain first identity");
+            Assert.That(mergedUserIds, Contains.Item(userIdentity1b), "Merged ring should contain second identity");
+
+            // Find the separate key ring
+            var separateKeyRing = importedKeys.FirstOrDefault(kr => kr.GetPublicKey().GetUserIds().Cast<string>().Count() == 1);
+            Assert.That(separateKeyRing, Is.Not.Null, "Should have a separate key ring with one user ID");
+            var separateUserIds = separateKeyRing.GetPublicKey().GetUserIds().Cast<string>().ToList();
+            Assert.That(separateUserIds, Contains.Item(userIdentity2), "Separate ring should contain the second key's identity");
+        }
+
+        [Test]
+        public async Task ImportOrMergeDifferentKeysDerivedFromDifferentTagsImportsSeparately()
+        {
+            // Arrange: Create two keyrings derived from different tags (different KeyIds)
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            string userIdentity1 = TestData.GetAccount().GetPgpIdentity();
+            string userIdentity2 = TestData.GetSecondAccount().GetPgpIdentity();
+            string derivationTag1 = "tag1";
+            string derivationTag2 = "tag2";
+
+            // Generate first key in separate context
+            using EccPgpContext ctxTemp1 = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            ctxTemp1.GeneratePgpKeysByTagOld(TestData.MasterKey, userIdentity1, derivationTag1);
+            var firstKeyRing = ctxTemp1.EnumeratePublicKeyRings().First();
+            var firstKeyId = firstKeyRing.GetPublicKey().KeyId;
+
+            // Generate second key in separate context
+            using EccPgpContext ctxTemp2 = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            ctxTemp2.GeneratePgpKeysByTagOld(TestData.MasterKey, userIdentity2, derivationTag2);
+            var secondKeyRing = ctxTemp2.EnumeratePublicKeyRings().First();
+            var secondKeyId = secondKeyRing.GetPublicKey().KeyId;
+
+            // Verify keys have different KeyIds
+            Assert.That(firstKeyId, Is.Not.EqualTo(secondKeyId),
+                "Keys derived from different tags should have different KeyIds");
+
+            // Act - import both keyrings using ImportOrMerge
+            ctx.ImportOrMerge(firstKeyRing);
+            ctx.ImportOrMerge(secondKeyRing);
+
+            // Assert - should have two separate keyrings
+            var allKeys = ctx.EnumeratePublicKeyRings().ToList();
+            Assert.That(allKeys.Count, Is.EqualTo(2), "Should have two separate key rings for different KeyIds");
+
+            var keyIds = allKeys.Select(kr => kr.GetPublicKey().KeyId).ToList();
+            Assert.That(keyIds, Contains.Item(firstKeyId), "Should contain first key");
+            Assert.That(keyIds, Contains.Item(secondKeyId), "Should contain second key");
+        }
+
+        [Test]
+        public async Task ImportOrMergeSameKeyRingTwiceThrowsPublicKeyAlreadyExistException()
+        {
+            // Arrange: Create a keyring and import it twice
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            var masterKey = CreateTestPublicKey();
+            var encryptionKey = CreateTestPublicKey();
+            string userIdentity = "duplicate@example.com";
+
+            var keyRing = EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity);
+
+            // Act - import the keyring first time (should succeed)
+            ctx.ImportOrMerge(keyRing);
+
+            // Assert - second import should throw PublicKeyAlreadyExistException
+            var ex = Assert.Throws<PublicKeyAlreadyExistException>(
+                () => ctx.ImportOrMerge(keyRing),
+                "Should throw PublicKeyAlreadyExistException when importing identical keyring twice");
+
+            Assert.That(ex.Message, Does.Contain(userIdentity),
+                "Exception message should contain the duplicate user identity");
+        }
+
+        [Test]
+        public async Task ImportOrMergeDerivedKeyWithSameIdentityTwiceThrowsPublicKeyAlreadyExistException()
+        {
+            // Arrange: Generate a derived key and try to merge it with itself
+            using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            string userIdentity = TestData.GetAccount().GetPgpIdentity();
+            string derivationTag = "duplicate-tag";
+
+            // Generate first keyring
+            using EccPgpContext ctxTemp1 = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            ctxTemp1.GeneratePgpKeysByTagOld(TestData.MasterKey, userIdentity, derivationTag);
+            var keyRing1 = ctxTemp1.EnumeratePublicKeyRings().First();
+
+            // Generate second keyring with same parameters (same key, same identity)
+            using EccPgpContext ctxTemp2 = await InitializeEccPgpContextAsync().ConfigureAwait(false);
+            ctxTemp2.GeneratePgpKeysByTagOld(TestData.MasterKey, userIdentity, derivationTag);
+            var keyRing2 = ctxTemp2.EnumeratePublicKeyRings().First();
+
+            // Verify both keyrings have the same KeyId
+            Assert.That(keyRing1.GetPublicKey().KeyId, Is.EqualTo(keyRing2.GetPublicKey().KeyId),
+                "Both keyrings should have the same KeyId");
+
+            // Act - import first keyring (should succeed)
+            ctx.ImportOrMerge(keyRing1);
+
+            // Assert - second import should throw PublicKeyAlreadyExistException
+            var ex = Assert.Throws<PublicKeyAlreadyExistException>(
+                () => ctx.ImportOrMerge(keyRing2),
+                "Should throw PublicKeyAlreadyExistException when importing keyring with same key and identity");
+
+            Assert.That(ex.Message, Does.Contain(userIdentity),
+                "Exception message should contain the duplicate user identity");
+        }
+        #endregion
     }
 }
