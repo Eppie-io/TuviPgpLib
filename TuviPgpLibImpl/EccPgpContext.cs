@@ -264,7 +264,7 @@ namespace TuviPgpLibImpl
 
             if (string.IsNullOrEmpty(keyTag))
             {
-                throw new ArgumentException(nameof(keyTag));
+                throw new ArgumentException("Parameter 'keyTag' must not be null or empty.", nameof(keyTag));
             }
 
             using (var childKey = DerivationKeyFactory.CreatePrivateDerivationKey(masterKey, keyTag))
@@ -304,6 +304,7 @@ namespace TuviPgpLibImpl
             }
 
             using (var memoryStream = new MemoryStream())
+            using (var bcpgOut = new BcpgOutputStream(memoryStream))
             {
                 // Create master key (ECDsa)
                 var masterBcpgKey = new ECDsaPublicBcpgKey(
@@ -318,11 +319,11 @@ namespace TuviPgpLibImpl
                 );
 
                 // Encode master key
-                masterPublicPk.Encode(new BcpgOutputStream(memoryStream));
+                masterPublicPk.Encode(bcpgOut);
 
                 // Add user identity
                 var userIdPacket = new UserIdPacket(userIdentity);
-                userIdPacket.Encode(new BcpgOutputStream(memoryStream));
+                userIdPacket.Encode(bcpgOut);
 
                 // Create encryption subkey (ECDH)
                 var encryptionBcpgKey = new ECDHPublicBcpgKey(
@@ -339,7 +340,7 @@ namespace TuviPgpLibImpl
                 );
 
                 // Encode encryption subkey
-                encryptionPublicPk.Encode(new BcpgOutputStream(memoryStream));
+                encryptionPublicPk.Encode(bcpgOut);
 
                 // Reset stream position and create key ring
                 memoryStream.Position = 0;
