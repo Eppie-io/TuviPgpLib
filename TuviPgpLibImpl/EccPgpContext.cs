@@ -51,7 +51,7 @@ namespace TuviPgpLibImpl
         private const HashAlgorithmTag DefaultHashAlgorithmTag = HashAlgorithmTag.Sha256;
 
         private const string EncryptionTag = "Encryption";
-        
+
         enum KeyType : uint
         {
             MasterKey = 0,
@@ -450,11 +450,11 @@ namespace TuviPgpLibImpl
         }
 
         private static PgpKeyRingGenerator CreatePgpKeyRingGenerator(
-            string userIdentity, 
-            string password, 
-            PgpKeyPair pgpMasterKeyPair, 
-            PgpSignatureSubpacketGenerator certificationSubpacketGenerator, 
-            PgpKeyPair encPgpSubKeyPair, 
+            string userIdentity,
+            string password,
+            PgpKeyPair pgpMasterKeyPair,
+            PgpSignatureSubpacketGenerator certificationSubpacketGenerator,
+            PgpKeyPair encPgpSubKeyPair,
             PgpSignatureSubpacketGenerator encSubpacketGenerator)
         {
             PgpKeyRingGenerator keyRingGenerator = new PgpKeyRingGenerator(
