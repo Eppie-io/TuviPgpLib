@@ -182,9 +182,11 @@ namespace TuviPgpLibTests
             inputData.Position = 0;
             signedMime.WriteTo(encryptedData);
             encryptedData.Position = 0;
-            ctx.Decrypt(encryptedData, out DigitalSignatureCollection signatures);
+            ctx.Decrypt(encryptedData, out DigitalSignatureCollection? signatures);
 
-            foreach (IDigitalSignature signature in signatures)
+            Assert.That(signatures, Is.Not.Null);
+
+            foreach (IDigitalSignature signature in signatures!)
             {
                 Assert.That(signature.Verify(), Is.True);
             }
@@ -207,7 +209,7 @@ namespace TuviPgpLibTests
             ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
             Assert.That(ctx.CanSign(TestData.GetAccount().GetMailbox()), Is.True);
             Assert.Throws<ArgumentNullException>(
-               () => ctx.CanSign(null));
+               () => ctx.CanSign(null!));
         }
 
         [Test]
@@ -225,10 +227,10 @@ namespace TuviPgpLibTests
             Assert.Throws<PrivateKeyNotFoundException>(
                () => ctx.GetSigningKey(TestData.GetAccount().GetMailbox()));
             Assert.Throws<ArgumentNullException>(
-               () => ctx.GetSigningKey(null));
+               () => ctx.GetSigningKey(null!));
             ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
             Assert.Throws<ArgumentNullException>(
-               () => ctx.GetSigningKey(null));
+               () => ctx.GetSigningKey(null!));
         }
 
         const int CoinType = 3630;
