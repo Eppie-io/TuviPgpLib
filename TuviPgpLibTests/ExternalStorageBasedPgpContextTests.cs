@@ -300,7 +300,7 @@ namespace TuviPgpLibTests
         {
             PgpPublicKeyRing? testKeyRing = null;
             using var ctx = await InitializeTestPgpContextAsync().ConfigureAwait(false);
-            Assert.Throws<ArgumentNullException>(() => ctx.Import(testKeyRing));
+            NUnitCompatAssert.Throws<ArgumentNullException>(() => ctx.Import(testKeyRing));
         }
 
         [Test]
@@ -308,7 +308,7 @@ namespace TuviPgpLibTests
         {
             PgpSecretKeyRing? testKeyRing = null;
             using var ctx = await InitializeTestPgpContextAsync().ConfigureAwait(false);
-            Assert.Throws<ArgumentNullException>(() => ctx.Import(testKeyRing));
+            NUnitCompatAssert.Throws<ArgumentNullException>(() => ctx.Import(testKeyRing));
         }
 
         [Test]
@@ -316,7 +316,7 @@ namespace TuviPgpLibTests
         {
             PgpPublicKeyRingBundle? testKeyBundle = null;
             using var ctx = await InitializeTestPgpContextAsync().ConfigureAwait(false);
-            Assert.Throws<ArgumentNullException>(() => ctx.Import(testKeyBundle));
+            NUnitCompatAssert.Throws<ArgumentNullException>(() => ctx.Import(testKeyBundle));
         }
 
         [Test]
@@ -324,7 +324,7 @@ namespace TuviPgpLibTests
         {
             PgpSecretKeyRingBundle? testKeyBundle = null;
             using var ctx = await InitializeTestPgpContextAsync().ConfigureAwait(false);
-            Assert.Throws<ArgumentNullException>(() => ctx.Import(testKeyBundle));
+            NUnitCompatAssert.Throws<ArgumentNullException>(() => ctx.Import(testKeyBundle));
         }
 
         [Test]
@@ -332,7 +332,7 @@ namespace TuviPgpLibTests
         {
             PgpPublicKeyRing? testKeyRing = null;
             using var ctx = await InitializeTestPgpContextAsync().ConfigureAwait(false);
-            Assert.Throws<ArgumentNullException>(() => ctx.Delete(testKeyRing));
+            NUnitCompatAssert.Throws<ArgumentNullException>(() => ctx.Delete(testKeyRing));
         }
 
         [Test]
@@ -340,7 +340,7 @@ namespace TuviPgpLibTests
         {
             PgpSecretKeyRing? testKeyRing = null;
             using var ctx = await InitializeTestPgpContextAsync().ConfigureAwait(false);
-            Assert.Throws<ArgumentNullException>(() => ctx.Delete(testKeyRing));
+            NUnitCompatAssert.Throws<ArgumentNullException>(() => ctx.Delete(testKeyRing));
         }
     }
 }

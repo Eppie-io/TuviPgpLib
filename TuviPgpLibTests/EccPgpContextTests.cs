@@ -196,9 +196,9 @@ namespace TuviPgpLibTests
         public async Task KeyDerivationNullParametersThrowArgumentNullExceptionAsync()
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            Assert.Throws<ArgumentNullException>(
+            NUnitCompatAssert.Throws<ArgumentNullException>(
                 () => ctx.GeneratePgpKeysByTagOld(null, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity()));
-            Assert.Throws<ArgumentNullException>(
+            NUnitCompatAssert.Throws<ArgumentNullException>(
                 () => ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, null, null));
         }
 
@@ -208,7 +208,7 @@ namespace TuviPgpLibTests
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
             ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
             Assert.That(ctx.CanSign(TestData.GetAccount().GetMailbox()), Is.True);
-            Assert.Throws<ArgumentNullException>(
+            NUnitCompatAssert.Throws<ArgumentNullException>(
                () => ctx.CanSign(null!));
         }
 
@@ -224,12 +224,12 @@ namespace TuviPgpLibTests
         public async Task EссCanSignWrongParameterThrowExceptionsAsync()
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
-            Assert.Throws<PrivateKeyNotFoundException>(
+            NUnitCompatAssert.Throws<PrivateKeyNotFoundException>(
                () => ctx.GetSigningKey(TestData.GetAccount().GetMailbox()));
-            Assert.Throws<ArgumentNullException>(
+            NUnitCompatAssert.Throws<ArgumentNullException>(
                () => ctx.GetSigningKey(null!));
             ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
-            Assert.Throws<ArgumentNullException>(
+            NUnitCompatAssert.Throws<ArgumentNullException>(
                () => ctx.GetSigningKey(null!));
         }
 
@@ -306,11 +306,11 @@ namespace TuviPgpLibTests
         {
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
             string userIdentity = TestData.GetAccount().GetPgpIdentity();
-            Assert.Throws<ArgumentNullException>(() => ctx.GeneratePgpKeysByBip44(null, userIdentity, CoinType, 0, 10, 0));
-            Assert.Throws<ArgumentNullException>(() => ctx.GeneratePgpKeysByBip44(TestData.MasterKey, null, CoinType, 0, 10, 0));
-            Assert.Throws<ArgumentOutOfRangeException>(() => ctx.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, -1, 10, 0));
-            Assert.Throws<ArgumentOutOfRangeException>(() => ctx.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, 0, -1, 0));
-            Assert.Throws<ArgumentOutOfRangeException>(() => ctx.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, 0, 10, -1));
+            NUnitCompatAssert.Throws<ArgumentNullException>(() => ctx.GeneratePgpKeysByBip44(null, userIdentity, CoinType, 0, 10, 0));
+            NUnitCompatAssert.Throws<ArgumentNullException>(() => ctx.GeneratePgpKeysByBip44(TestData.MasterKey, null, CoinType, 0, 10, 0));
+            NUnitCompatAssert.Throws<ArgumentOutOfRangeException>(() => ctx.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, -1, 10, 0));
+            NUnitCompatAssert.Throws<ArgumentOutOfRangeException>(() => ctx.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, 0, -1, 0));
+            NUnitCompatAssert.Throws<ArgumentOutOfRangeException>(() => ctx.GeneratePgpKeysByBip44(TestData.MasterKey, userIdentity, CoinType, 0, 10, -1));
         }
 
         [Test]
@@ -436,7 +436,7 @@ namespace TuviPgpLibTests
             int index = 0;
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(
+            NUnitCompatAssert.Throws<ArgumentNullException>(
                 () => EccPgpContext.GenerateEccPublicKey(null, coin, account, channel, index),
                 "Null masterKey should throw ArgumentNullException");
         }
@@ -452,7 +452,7 @@ namespace TuviPgpLibTests
             var masterKey = TestData.MasterKey;
 
             // Act & Assert
-            var ex = Assert.Throws<ArgumentOutOfRangeException>(
+            var ex = NUnitCompatAssert.Throws<ArgumentOutOfRangeException>(
                 () => EccPgpContext.GenerateEccPublicKey(masterKey, coin, account, channel, index),
                 $"Negative {paramName} should throw ArgumentOutOfRangeException");
             Assert.That(ex.ParamName, Is.EqualTo(paramName), "Exception should indicate the correct parameter name");
@@ -538,7 +538,7 @@ namespace TuviPgpLibTests
             string keyTag = ValidTag;
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(
+            NUnitCompatAssert.Throws<ArgumentNullException>(
                 () => EccPgpContext.GenerateEccPublicKey(null, keyTag),
                 "Null masterKey should throw ArgumentNullException");
         }
@@ -550,7 +550,7 @@ namespace TuviPgpLibTests
             var masterKey = TestData.MasterKey;
 
             // Act & Assert
-            Assert.Throws<ArgumentException>(
+            NUnitCompatAssert.Throws<ArgumentException>(
                 () => EccPgpContext.GenerateEccPublicKey(masterKey, null),
                 "Null keyTag should throw ArgumentNullException");
         }
@@ -563,7 +563,7 @@ namespace TuviPgpLibTests
             string keyTag = string.Empty;
 
             // Act & Assert
-            Assert.Throws<ArgumentException>(
+            NUnitCompatAssert.Throws<ArgumentException>(
                 () => EccPgpContext.GenerateEccPublicKey(masterKey, keyTag),
                 "Empty keyTag should throw ArgumentException");
         }
@@ -590,7 +590,7 @@ namespace TuviPgpLibTests
             string userIdentity = "user@example.com";
 
             // Act & Assert: Verify that null master key throws exception
-            var ex = Assert.Throws<ArgumentNullException>(() =>
+            var ex = NUnitCompatAssert.Throws<ArgumentNullException>(() =>
                 EccPgpContext.CreatePgpPublicKeyRing(null, encryptionKey, userIdentity),
                 "Should throw ArgumentNullException for null master key.");
             Assert.That(ex.ParamName, Is.EqualTo("masterPublicKey"), "Exception should indicate correct parameter name.");
@@ -604,7 +604,7 @@ namespace TuviPgpLibTests
             string userIdentity = "user@example.com";
 
             // Act & Assert: Verify that null encryption key throws exception
-            var ex = Assert.Throws<ArgumentNullException>(() =>
+            var ex = NUnitCompatAssert.Throws<ArgumentNullException>(() =>
                 EccPgpContext.CreatePgpPublicKeyRing(masterKey, null, userIdentity),
                 "Should throw ArgumentNullException for null encryption key.");
             Assert.That(ex.ParamName, Is.EqualTo("encryptionPublicKey"), "Exception should indicate correct parameter name.");
@@ -618,7 +618,7 @@ namespace TuviPgpLibTests
             var encryptionKey = CreateTestPublicKey();
 
             // Act & Assert: Verify that null user identity throws exception
-            var ex = Assert.Throws<ArgumentException>(() =>
+            var ex = NUnitCompatAssert.Throws<ArgumentException>(() =>
                 EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, null),
                 "Should throw ArgumentException for null user identity.");
             Assert.That(ex.Message, Does.Contain("User identity must not be null or empty."), "Exception message should indicate issue with user identity.");
@@ -633,7 +633,7 @@ namespace TuviPgpLibTests
             string userIdentity = "";
 
             // Act & Assert: Verify that empty user identity throws exception
-            var ex = Assert.Throws<ArgumentException>(() =>
+            var ex = NUnitCompatAssert.Throws<ArgumentException>(() =>
                 EccPgpContext.CreatePgpPublicKeyRing(masterKey, encryptionKey, userIdentity),
                 "Should throw ArgumentException for empty user identity.");
             Assert.That(ex.Message, Does.Contain("User identity must not be null or empty."), "Exception message should indicate issue with user identity.");
@@ -687,7 +687,7 @@ namespace TuviPgpLibTests
             using EccPgpContext ctx = await InitializeEccPgpContextAsync().ConfigureAwait(false);
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(
+            NUnitCompatAssert.Throws<ArgumentNullException>(
                 () => ctx.ImportOrMerge(null),
                 "Should throw ArgumentNullException for null keyring");
         }
@@ -756,7 +756,7 @@ namespace TuviPgpLibTests
             ctx.ImportOrMerge(keyRing1);
 
             // Assert - second import should throw because user ID already exists
-            Assert.Throws<PublicKeyAlreadyExistException>(
+            NUnitCompatAssert.Throws<PublicKeyAlreadyExistException>(
                 () => ctx.ImportOrMerge(keyRing2),
                 "Should throw PublicKeyAlreadyExistException when importing keyring with same user identity");
 
@@ -1032,7 +1032,7 @@ namespace TuviPgpLibTests
             ctx.ImportOrMerge(keyRing);
 
             // Assert - second import should throw PublicKeyAlreadyExistException
-            var ex = Assert.Throws<PublicKeyAlreadyExistException>(
+            var ex = NUnitCompatAssert.Throws<PublicKeyAlreadyExistException>(
                 () => ctx.ImportOrMerge(keyRing),
                 "Should throw PublicKeyAlreadyExistException when importing identical keyring twice");
 
@@ -1066,7 +1066,7 @@ namespace TuviPgpLibTests
             ctx.ImportOrMerge(keyRing1);
 
             // Assert - second import should throw PublicKeyAlreadyExistException
-            var ex = Assert.Throws<PublicKeyAlreadyExistException>(
+            var ex = NUnitCompatAssert.Throws<PublicKeyAlreadyExistException>(
                 () => ctx.ImportOrMerge(keyRing2),
                 "Should throw PublicKeyAlreadyExistException when importing keyring with same key and identity");
 

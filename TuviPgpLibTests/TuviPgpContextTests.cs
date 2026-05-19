@@ -83,7 +83,7 @@ namespace TuviPgpLibTests
                 ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetThirdAccount().GetPgpIdentity(), TestData.GetThirdAccount().GetPgpIdentity());
                 Assert.That(ctx.GetPublicKeysInfo().Count, Is.EqualTo(3));
 
-                Assert.DoesNotThrowAsync(() => ctx.ExportPublicKeyRingAsync(publicKeyId, publicKeyArmored, default));
+                NUnitCompatAssert.DoesNotThrowAsync(() => ctx.ExportPublicKeyRingAsync(publicKeyId, publicKeyArmored, default));
                 Assert.That(publicKeyArmored.Length, Is.GreaterThan(0), "Exported public key is empty");
 
                 ctx.ExportSecretKeys(TestData.GetAccount().GetPgpIdentity(), secretKeyData, true);
@@ -174,7 +174,7 @@ namespace TuviPgpLibTests
             using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
             UserIdentity? nullIdentity = null;
             ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetAccount().GetPgpIdentity(), TestData.GetAccount().GetPgpIdentity());
-            Assert.Throws<ArgumentNullException>(() => ctx.IsSecretKeyExist(nullIdentity));
+            NUnitCompatAssert.Throws<ArgumentNullException>(() => ctx.IsSecretKeyExist(nullIdentity));
         }
 
         [Test]
@@ -182,7 +182,7 @@ namespace TuviPgpLibTests
         {
             using Stream? nullStream = null;
             using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
-            Assert.Throws<ArgumentNullException>(() =>
+            NUnitCompatAssert.Throws<ArgumentNullException>(() =>
             ctx.ExportSecretKeys(TestData.GetAccount().GetPgpIdentity(), nullStream, true));
         }
 
@@ -192,7 +192,7 @@ namespace TuviPgpLibTests
             using Stream? nullStream = null;
             using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
             var identities = new List<UserIdentity> { TestData.GetAccount().GetUserIdentity() };
-            Assert.Throws<ArgumentNullException>(() =>
+            NUnitCompatAssert.Throws<ArgumentNullException>(() =>
             ctx.ExportPublicKeys(identities, nullStream, true));
         }
 
@@ -202,7 +202,7 @@ namespace TuviPgpLibTests
             using Stream publicKeyArmored = new MemoryStream();
             using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
             List<UserIdentity>? identities = null;
-            Assert.Throws<ArgumentNullException>(() =>
+            NUnitCompatAssert.Throws<ArgumentNullException>(() =>
             ctx.ExportPublicKeys(identities, publicKeyArmored, true));
         }
 
@@ -211,8 +211,8 @@ namespace TuviPgpLibTests
         {
             using Stream? nullStream = null;
             using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
-            Assert.Throws<ArgumentNullException>(() => ctx.ImportSecretKeys(nullStream, true));
-            Assert.Throws<ArgumentNullException>(() => ctx.ImportSecretKeys(nullStream, false));
+            NUnitCompatAssert.Throws<ArgumentNullException>(() => ctx.ImportSecretKeys(nullStream, true));
+            NUnitCompatAssert.Throws<ArgumentNullException>(() => ctx.ImportSecretKeys(nullStream, false));
         }
 
         [Test]
@@ -220,8 +220,8 @@ namespace TuviPgpLibTests
         {
             using Stream? nullStream = null;
             using TuviPgpContext ctx = await InitializeTuviPgpContextAsync().ConfigureAwait(false);
-            Assert.Throws<ImportPublicKeyException>(() => ctx.ImportPublicKeys(nullStream, true));
-            Assert.Throws<ImportPublicKeyException>(() => ctx.ImportPublicKeys(nullStream, false));
+            NUnitCompatAssert.Throws<ImportPublicKeyException>(() => ctx.ImportPublicKeys(nullStream, true));
+            NUnitCompatAssert.Throws<ImportPublicKeyException>(() => ctx.ImportPublicKeys(nullStream, false));
         }
     }
 }

@@ -66,7 +66,7 @@ namespace TuviPgpLibTests
         {
             PgpPublicKey? key = null;
 
-            Assert.Throws<ArgumentNullException>(() => key.CreatePgpKeyInfo());
+            NUnitCompatAssert.Throws<ArgumentNullException>(() => key.CreatePgpKeyInfo());
             Assert.That(key.GetUserIdentity(), Is.EqualTo(String.Empty));
         }
     }
