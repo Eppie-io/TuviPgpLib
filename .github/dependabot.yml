@@ -17,3 +17,25 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "daily"
+
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "github-actions"
+      - "dependencies"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    groups:
+      Common-actions:
+        patterns:
+          - "actions/*"
+      Finebits-actions:
+        patterns:
+          - "finebits/*"
+      GitHub-actions:
+        patterns:
+          - "github/*"
