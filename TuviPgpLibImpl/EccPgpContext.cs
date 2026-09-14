@@ -313,6 +313,7 @@ namespace TuviPgpLibImpl
                 );
 
                 var masterPublicPk = new PublicKeyPacket(
+                    version: PublicKeyPacket.Version4,
                     algorithm: PublicKeyAlgorithmTag.ECDsa,
                     time: KeyCreationTime,
                     key: masterBcpgKey
@@ -334,6 +335,7 @@ namespace TuviPgpLibImpl
                 );
 
                 var encryptionPublicPk = new PublicSubkeyPacket(
+                    version: PublicKeyPacket.Version4,
                     algorithm: PublicKeyAlgorithmTag.ECDH,
                     time: KeyCreationTime,
                     key: encryptionBcpgKey
@@ -501,7 +503,7 @@ namespace TuviPgpLibImpl
                 throw new PgpException("unsupported algorithm");
             }
 
-            PublicKeyPacket publicPk = new PublicSubkeyPacket(algorithm, time, bcpgKey);
+            PublicKeyPacket publicPk = new PublicSubkeyPacket(PublicKeyPacket.Version4, algorithm, time, bcpgKey);
 
             var pub = new PgpPublicKey(publicPk);
             var priv = new PgpPrivateKey(pub.KeyId, pub.PublicKeyPacket, keyPair.Private);
