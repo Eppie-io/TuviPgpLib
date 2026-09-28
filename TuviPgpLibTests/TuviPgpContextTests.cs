@@ -83,7 +83,7 @@ namespace TuviPgpLibTests
                 ctx.GeneratePgpKeysByTagOld(TestData.MasterKey, TestData.GetThirdAccount().GetPgpIdentity(), TestData.GetThirdAccount().GetPgpIdentity());
                 Assert.That(ctx.GetPublicKeysInfo().Count, Is.EqualTo(3));
 
-                Assert.DoesNotThrowAsync(() => ctx.ExportPublicKeyRingAsync(publicKeyId, publicKeyArmored, default));
+                await Assert.DoesNotThrowAsync(() => ctx.ExportPublicKeyRingAsync(publicKeyId, publicKeyArmored, default)).ConfigureAwait(false);
                 Assert.That(publicKeyArmored.Length, Is.GreaterThan(0), "Exported public key is empty");
 
                 ctx.ExportSecretKeys(TestData.GetAccount().GetPgpIdentity(), secretKeyData, true);
