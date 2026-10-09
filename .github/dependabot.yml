@@ -11,6 +11,10 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "daily"
+    ignore:
+      # UWP (.NET Native) can't use MimeKit version higher than 4.18
+      # This should be removed after migrating Eppie(UWP app) from .NET Native to modern .NET
+      - dependency-name: "MimeKit"
       
   # Maintain dependencies for gitsubmodule
   - package-ecosystem: "gitsubmodule"
