@@ -11,6 +11,10 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "daily"
+    open-pull-requests-limit: 20      
+    commit-message:
+      prefix: "build"
+      include: "scope"
     ignore:
       # UWP (.NET Native) can't use MimeKit version higher than 4.17
       # This should be removed after migrating Eppie(UWP app) from .NET Native to modern .NET
@@ -22,6 +26,16 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "daily"
+    cooldown:
+      default-days: 0
+    open-pull-requests-limit: 20
+    commit-message:
+      prefix: "build"
+      include: "scope"
+    groups:
+      submodules:
+        patterns:
+          - "*"
 
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
