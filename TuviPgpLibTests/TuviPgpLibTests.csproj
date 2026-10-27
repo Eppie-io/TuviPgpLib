@@ -31,6 +31,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!--  Update transitive packages containing known high severity vulnerabilities here.  -->
+
+	 <!-- From The `MimeKit` package -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\gitmodules\TuviKeyDerivationLib\KeyDerivationInterface\KeyDerivation.csproj" />
     <ProjectReference Include="..\gitmodules\TuviKeyDerivationLib\KeyDerivationLib\KeyDerivationLib.csproj" />
     <ProjectReference Include="..\TuviPgpLibImpl\TuviPgpLibImpl.csproj" />
