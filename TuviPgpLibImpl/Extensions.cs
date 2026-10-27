@@ -61,7 +61,7 @@ namespace TuviPgpLibImpl
                 Fingerprint = BitConverter.ToString(key.GetFingerprint()).Replace("-", string.Empty),
                 IsEncryptionKey = key.IsEncryptionKey,
                 IsMasterKey = key.IsMasterKey,
-                IsRevoked = key.HasRevocation()
+                IsRevoked = key.IsRevoked()
             };
         }
 

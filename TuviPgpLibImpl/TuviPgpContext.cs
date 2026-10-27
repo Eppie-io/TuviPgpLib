@@ -90,8 +90,10 @@ namespace TuviPgpLibImpl
 
             if (isArmored)
             {
-                using (var armored = ArmoredOutputStream.Build().SetVersion(null).Build(outputStream))
+                using (var armored = new ArmoredOutputStream(outputStream))
                 {
+                    armored.SetHeader("Version", null);
+
                     bundle.Encode(armored);
                     armored.Flush();
                 }
