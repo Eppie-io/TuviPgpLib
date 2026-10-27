@@ -15,7 +15,7 @@ on:
 env:
   project: TuviPgpLib.sln
   test-project: TuviPgpLib.sln
-  dotnet-version: 8.x
+  dotnet-version: 10.x
 
 jobs:
   build:
